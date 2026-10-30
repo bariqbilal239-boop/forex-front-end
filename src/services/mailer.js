@@ -1,5 +1,5 @@
 // Sends email through any SMTP provider (Brevo, Mailgun, SendGrid, Amazon SES, Gmail, ...).
-// Without SMTP_HOST, emails are saved to data/outbox/ as .html files so you can preview them in development.
+// Without SMTP_HOST: locally, emails are saved to data/outbox/ for previewing; on Vercel they are only logged.
 import fs from "node:fs";
 import path from "node:path";
 import nodemailer from "nodemailer";
@@ -24,6 +24,10 @@ function getTransport() {
 /** @param {{ to: string, subject: string, html: string, text: string, replyTo?: string, headers?: Record<string,string> }} mail */
 export async function sendEmail(mail) {
   if (!emailEnabled()) {
+    if (process.env.VERCEL) {
+      console.warn(`[email] SMTP not configured — "${mail.subject}" to ${mail.to} was not sent.`);
+      return;
+    }
     const dir = path.resolve("data/outbox");
     fs.mkdirSync(dir, { recursive: true });
     const file = path.join(dir, `${Date.now()}-${mail.to.replace(/[^a-z0-9@.]/gi, "_")}.html`);
@@ -37,7 +41,14 @@ export async function sendEmail(mail) {
   });
 }
 
-/** Fire-and-forget for emails that must not block or fail a request (auto-replies, notifications). */
-export function sendInBackground(mail) {
-  sendEmail(mail).catch((err) => console.error(`[email] failed to send "${mail.subject}" to ${mail.to}:`, err.message));
+/**
+ * For emails that must not fail the request (auto-replies, notifications).
+ * Awaited rather than fire-and-forget: serverless functions stop as soon as the response is sent.
+ */
+export async function sendSafely(mail) {
+  try {
+    await sendEmail(mail);
+  } catch (err) {
+    console.error(`[email] failed to send "${mail.subject}" to ${mail.to}:`, err.message);
+  }
 }

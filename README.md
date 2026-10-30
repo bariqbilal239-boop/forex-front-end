@@ -1,12 +1,12 @@
 # Aurum Markets — Backend & Admin Panel
 
-Node.js (Express 5) API with a built-in SQLite database, the admin panel / blog CMS,
+Node.js (Express 5) API with a Turso / SQLite database, ready to deploy on **Vercel**, the admin panel / blog CMS,
 branded email templates (SMTP) and a market-data integration (Twelve Data).
 Works with the Next.js website in [forex-website](https://github.com/bariqbilal239-boop/forex-website).
 
 ## Run
 
-Requires **Node.js 22.5+** (uses the built-in `node:sqlite`).
+Requires **Node.js 20+**.
 
 ```bash
 npm install
@@ -14,16 +14,27 @@ cp .env.example .env   # optional
 npm start              # http://localhost:5173/admin.html
 ```
 
-On first start it creates `data/aurum.db` and `data/first-login.txt` with the admin email and a
-random password. Sign in, then delete that file. Back up by copying the `data/` folder.
+Locally it uses the file `data/aurum.db`. On first start it creates `data/first-login.txt` with the admin email and a
+random password (unless `ADMIN_PASSWORD` is set). Sign in, then delete that file.
+
+## Deploy on Vercel
+
+1. Create a free database at [turso.tech](https://turso.tech) (or in Vercel → **Storage** → Turso) and copy its URL and auth token.
+2. Import this repo in Vercel. Framework preset: **Other**. No build command needed (`vercel.json` handles it).
+3. Add the environment variables below (at least `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `PUBLIC_API_URL`, `SITE_URL`, `CORS_ORIGINS`).
+4. Deploy. The admin panel is at `https://<your-backend>.vercel.app/admin.html`.
+
+How it fits serverless: `api/index.js` runs the Express app as one function; `public/` (admin panel) is served by Vercel's CDN;
+market prices are cached in the database and refreshed on demand (no timers); emails are sent before each response finishes.
 
 ## Structure
 
 ```
 src/
-  server.js          Express app, security headers, CORS, static admin panel
+  app.js             Express app, security headers, CORS
+  server.js          Local dev server (app.listen)
   env.js             .env loader
-  db.js              SQLite schema + first-run admin and sample posts
+  db.js              Turso/libSQL client, schema, migrations, first-run admin
   auth.js            Cookie sessions, requireAdmin middleware (CSRF header check)
   util.js            Password hashing, HTML cleaning, rate limiting, helpers
   routes/
@@ -32,10 +43,13 @@ src/
     audience.js      contact messages, replies, newsletter (double opt-in), campaigns
     site.js          site content, market prices, admin bootstrap
   services/
-    mailer.js        SMTP sending (saves to data/outbox/ when SMTP isn't configured)
-    markets.js       Twelve Data price feed with caching
+    mailer.js        SMTP sending (saves to data/outbox/ locally when SMTP isn't configured)
+    markets.js       Twelve Data prices, cached in the database
   emails/
     templates.js     All email templates (HTML + plain text)
+api/
+  index.js           Vercel serverless entry
+vercel.json          Vercel routing
 public/
   admin.html         Admin panel UI
   cms-admin.js       Connects the admin panel to the API
@@ -71,18 +85,20 @@ Copy `.env.example` to `.env`. Values don't need quotes.
 
 | Variable | Required | What it does |
 |---|---|---|
-| `PORT` | no | Port to listen on (default 5173) |
+| `TURSO_DATABASE_URL` | **Vercel** | Turso database URL (`libsql://…`). Empty locally → `data/aurum.db` |
+| `TURSO_AUTH_TOKEN` | **Vercel** | Turso auth token |
+| `PORT` | no | Local port (default 5173); ignored on Vercel |
 | `NODE_ENV` | prod | `production` makes the login cookie HTTPS-only |
 | `PUBLIC_API_URL` | prod | Public URL of this backend, used in email links |
 | `SITE_URL` | prod | Public URL of the Next.js website |
 | `SITE_NAME` | no | Brand name in emails (default "Aurum Markets") |
 | `CORS_ORIGINS` | no | Sites allowed to call the public API from the browser |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | first run | First admin account; empty password → random one in `data/first-login.txt` |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | first run | First admin account (required on Vercel). Only used when the database has no users |
 | `SMTP_HOST` `SMTP_PORT` `SMTP_USER` `SMTP_PASS` | for email | Your email provider's SMTP settings. Empty host → emails saved to `data/outbox/` |
 | `EMAIL_FROM` | for email | Sender, e.g. `"Aurum Markets" <news@yourdomain.com>` (verify the domain with your provider) |
 | `ADMIN_NOTIFY_EMAIL` | no | Receives a copy of every contact-form message |
 | `TWELVE_DATA_API_KEY` | for prices | Real (delayed) prices. Empty → sample prices labelled "Illustrative sample" |
-| `MARKET_REFRESH_MINUTES` | no | Refresh interval, min 5, default 20 (fits the free plan) |
+| `MARKET_REFRESH_MINUTES` | no | Price cache lifetime, min 5, default 20 (fits the free plan) |
 
 ## Emails
 
@@ -101,6 +117,7 @@ Preview them in **Admin → Newsletter → Email templates**. Campaign emails in
 
 ## Production notes
 
-- Serve behind HTTPS (Nginx / Caddy) and set `NODE_ENV=production` so cookies are `Secure`.
-- Twelve Data's free plan provides delayed data for personal use; check their licence terms (and upgrade if needed) before showing prices on a public commercial site.
+- On Vercel the login rate limit is per function instance, so it is weaker than on a single server. Use a strong admin password.
+- Twelve Data's free plan provides delayed data for personal use; check their licence terms before showing prices on a public commercial site.
 - Set up SPF, DKIM and DMARC for your sending domain so emails don't land in spam.
+- Large campaigns: Vercel functions stop after 60 seconds (`vercel.json`), so for thousands of subscribers send through your email provider's bulk tool instead.

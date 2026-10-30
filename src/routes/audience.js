@@ -2,9 +2,9 @@
 import crypto from "node:crypto";
 import { Router } from "express";
 import { requireAdmin } from "../auth.js";
-import { db } from "../db.js";
+import { all, one, run } from "../db.js";
 import * as emails from "../emails/templates.js";
-import { sendEmail, sendInBackground } from "../services/mailer.js";
+import { sendEmail, sendSafely } from "../services/mailer.js";
 import { isEmail, randomId, rateLimit, str, wrap } from "../util.js";
 
 const router = Router();
@@ -15,84 +15,84 @@ const unsubscribeUrl = (token) => `${apiUrl()}/api/subscribers/unsubscribe?token
 const newToken = () => crypto.randomBytes(24).toString("hex");
 
 // ---------- public: contact ----------
-router.post("/messages", rateLimit(10), (req, res) => {
+router.post("/messages", rateLimit(10), wrap(async (req, res) => {
   const b = req.body;
   const msg = { name: str(b.name, 120).trim(), email: str(b.email, 200).trim(), category: str(b.category, 80), subject: str(b.subject, 200).trim(), message: str(b.message, 5000).trim() };
   if (!msg.name || !isEmail(msg.email) || !msg.subject || msg.message.length < 20) return res.status(400).json({ error: "Please complete all fields." });
 
-  const id = randomId();
-  db.prepare("INSERT INTO messages (id, name, email, category, subject, message, at) VALUES (?, ?, ?, ?, ?, ?, ?)").run(id, msg.name, msg.email, msg.category, msg.subject, msg.message, Date.now());
+  await run("INSERT INTO messages (id, name, email, category, subject, message, at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    randomId(), msg.name, msg.email, msg.category, msg.subject, msg.message, Date.now());
 
-  sendInBackground({ to: msg.email, ...emails.contactAutoReply(msg) });
-  if (process.env.ADMIN_NOTIFY_EMAIL) {
-    sendInBackground({ to: process.env.ADMIN_NOTIFY_EMAIL, replyTo: msg.email, ...emails.contactNotification({ ...msg, adminUrl: `${apiUrl()}/admin.html#inbox` }) });
-  }
+  await Promise.all([
+    sendSafely({ to: msg.email, ...emails.contactAutoReply(msg) }),
+    process.env.ADMIN_NOTIFY_EMAIL &&
+      sendSafely({ to: process.env.ADMIN_NOTIFY_EMAIL, replyTo: msg.email, ...emails.contactNotification({ ...msg, adminUrl: `${apiUrl()}/admin.html#inbox` }) }),
+  ]);
   res.status(201).json({ ok: true });
-});
+}));
 
 // ---------- public: newsletter (double opt-in) ----------
 router.post("/subscribers", rateLimit(10), wrap(async (req, res) => {
   if (!isEmail(req.body.email)) return res.status(400).json({ error: "Invalid email." });
   const email = str(req.body.email, 200).toLowerCase().trim();
-  const existing = db.prepare("SELECT * FROM subscribers WHERE email = ?").get(email);
+  const existing = await one("SELECT * FROM subscribers WHERE email = ?", email);
   // Same response either way, so the form can't be used to discover who is subscribed.
   if (existing?.status === "Confirmed") return res.status(201).json({ ok: true, pending: true });
 
   const token = newToken();
-  db.prepare("INSERT OR REPLACE INTO subscribers (email, source, at, status, token) VALUES (?, ?, ?, 'Pending', ?)").run(email, str(req.body.source, 40), Date.now(), token);
+  await run("INSERT OR REPLACE INTO subscribers (email, source, at, status, token) VALUES (?, ?, ?, 'Pending', ?)", email, str(req.body.source, 40), Date.now(), token);
   await sendEmail({ to: email, ...emails.confirmSubscription({ confirmUrl: `${apiUrl()}/api/subscribers/confirm?token=${token}` }) });
   res.status(201).json({ ok: true, pending: true });
 }));
 
-router.get("/subscribers/confirm", (req, res) => {
-  const sub = db.prepare("SELECT * FROM subscribers WHERE token = ?").get(str(req.query.token, 100));
+router.get("/subscribers/confirm", wrap(async (req, res) => {
+  const sub = await one("SELECT * FROM subscribers WHERE token = ?", str(req.query.token, 100));
   if (!sub) return res.redirect(`${siteUrl()}/newsletter?status=invalid`);
   if (sub.status !== "Confirmed") {
-    db.prepare("UPDATE subscribers SET status = 'Confirmed' WHERE email = ?").run(sub.email);
-    sendInBackground({ to: sub.email, ...emails.welcome({ unsubscribeUrl: unsubscribeUrl(sub.token) }) });
+    await run("UPDATE subscribers SET status = 'Confirmed' WHERE email = ?", sub.email);
+    await sendSafely({ to: sub.email, ...emails.welcome({ unsubscribeUrl: unsubscribeUrl(sub.token) }) });
   }
   res.redirect(`${siteUrl()}/newsletter?status=confirmed`);
-});
+}));
 
 // GET for the link in emails; POST for one-click unsubscribe from mail clients (RFC 8058)
-router.all("/subscribers/unsubscribe", (req, res) => {
-  const token = str(req.query.token, 100);
-  db.prepare("UPDATE subscribers SET status = 'Unsubscribed' WHERE token = ?").run(token);
+router.all("/subscribers/unsubscribe", wrap(async (req, res) => {
+  await run("UPDATE subscribers SET status = 'Unsubscribed' WHERE token = ?", str(req.query.token, 100));
   if (req.method === "POST") return res.json({ ok: true });
   res.redirect(`${siteUrl()}/newsletter?status=unsubscribed`);
-});
+}));
 
 // ---------- admin ----------
-router.put("/messages/:id", requireAdmin, (req, res) => {
-  const msg = db.prepare("SELECT * FROM messages WHERE id = ?").get(req.params.id);
+router.put("/messages/:id", requireAdmin, wrap(async (req, res) => {
+  const msg = await one("SELECT * FROM messages WHERE id = ?", req.params.id);
   if (!msg) return res.status(404).json({ error: "Not found." });
   const status = req.body.status ? str(req.body.status, 20) : msg.status;
   const note = req.body.note !== undefined ? str(req.body.note, 4000) : msg.note;
-  db.prepare("UPDATE messages SET status = ?, note = ? WHERE id = ?").run(status, note, msg.id);
+  await run("UPDATE messages SET status = ?, note = ? WHERE id = ?", status, note, msg.id);
   res.json({ ...msg, status, note });
-});
+}));
 
 router.post("/messages/:id/reply", requireAdmin, wrap(async (req, res) => {
-  const msg = db.prepare("SELECT * FROM messages WHERE id = ?").get(req.params.id);
+  const msg = await one("SELECT * FROM messages WHERE id = ?", req.params.id);
   if (!msg) return res.status(404).json({ error: "Not found." });
   const reply = str(req.body.reply, 10000).trim();
   if (!reply) return res.status(400).json({ error: "Write a reply first." });
 
   await sendEmail({ to: msg.email, ...emails.contactReply({ name: msg.name, subject: msg.subject, reply, staffName: req.user.name }) });
-  const replies = [...JSON.parse(msg.replies || "[]"), { by: req.user.name, text: reply, at: Date.now() }];
-  db.prepare("UPDATE messages SET replies = ?, status = 'Resolved' WHERE id = ?").run(JSON.stringify(replies), msg.id);
-  res.json({ ...msg, replies: JSON.stringify(replies), status: "Resolved" });
+  const replies = JSON.stringify([...JSON.parse(msg.replies || "[]"), { by: req.user.name, text: reply, at: Date.now() }]);
+  await run("UPDATE messages SET replies = ?, status = 'Resolved' WHERE id = ?", replies, msg.id);
+  res.json({ ...msg, replies, status: "Resolved" });
 }));
 
-router.delete("/messages/:id", requireAdmin, (req, res) => {
-  db.prepare("DELETE FROM messages WHERE id = ?").run(req.params.id);
+router.delete("/messages/:id", requireAdmin, wrap(async (req, res) => {
+  await run("DELETE FROM messages WHERE id = ?", req.params.id);
   res.json({ ok: true });
-});
+}));
 
-router.delete("/subscribers/:email", requireAdmin, (req, res) => {
-  db.prepare("DELETE FROM subscribers WHERE email = ?").run(req.params.email);
+router.delete("/subscribers/:email", requireAdmin, wrap(async (req, res) => {
+  await run("DELETE FROM subscribers WHERE email = ?", req.params.email);
   res.json({ ok: true });
-});
+}));
 
 /** Send a campaign to every confirmed subscriber. `test: true` sends only to the signed-in admin. */
 router.post("/campaigns", requireAdmin, wrap(async (req, res) => {
@@ -102,7 +102,7 @@ router.post("/campaigns", requireAdmin, wrap(async (req, res) => {
 
   const recipients = req.body.test
     ? [{ email: req.user.email, token: "test" }]
-    : db.prepare("SELECT email, token FROM subscribers WHERE status = 'Confirmed'").all();
+    : await all("SELECT email, token FROM subscribers WHERE status = 'Confirmed'");
 
   let sent = 0;
   const failed = [];
