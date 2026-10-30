@@ -1,7 +1,7 @@
 // Site content edited from Pages, Menus, Markets and Settings, plus the admin bootstrap payload.
 import { Router } from "express";
 import { requireAdmin } from "../auth.js";
-import { all, getSetting, setSetting } from "../db.js";
+import { col, getSetting, NO_ID, setSetting } from "../db.js";
 import { emailEnabled } from "../services/mailer.js";
 import { getMarkets, marketStatus } from "../services/markets.js";
 import { str, wrap } from "../util.js";
@@ -21,11 +21,11 @@ router.get("/public/markets", wrap(async (req, res) => res.json(await getMarkets
 // Admin: everything the panel needs on load
 router.get("/admin", requireAdmin, wrap(async (req, res) => {
   const [posts, site, forms, messages, subscribers, markets] = await Promise.all([
-    all("SELECT * FROM posts ORDER BY updated DESC"),
+    col("posts").find({}, NO_ID).sort({ updated: -1 }).toArray(),
     getSetting("site", {}),
     getSetting("forms", {}),
-    all("SELECT * FROM messages ORDER BY at DESC"),
-    all("SELECT email, source, at, status FROM subscribers ORDER BY at DESC"),
+    col("messages").find({}, NO_ID).sort({ at: -1 }).toArray(),
+    col("subscribers").find({}, { projection: { _id: 0, token: 0 } }).sort({ at: -1 }).toArray(),
     marketStatus(),
   ]);
   res.json({ posts: posts.map(toPost), site, forms, messages, subscribers, integrations: { markets, email: emailEnabled() } });

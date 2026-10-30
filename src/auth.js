@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { one, run } from "./db.js";
+import { col } from "./db.js";
 
 export const SESSION_MS = 8 * 3600_000;
 const COOKIE = "aurum_sid";
@@ -8,13 +8,13 @@ const tokenFrom = (req) => (req.headers.cookie || "").match(new RegExp(`(?:^|;\\
 
 export async function createSession(res, email) {
   const token = crypto.randomBytes(24).toString("hex");
-  await run("INSERT INTO sessions (token, email, expires) VALUES (?, ?, ?)", token, email, Date.now() + SESSION_MS);
+  await col("sessions").insertOne({ token, email, expiresAt: new Date(Date.now() + SESSION_MS) });
   const secure = process.env.NODE_ENV === "production" || process.env.VERCEL ? "; Secure" : "";
   res.setHeader("Set-Cookie", `${COOKIE}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_MS / 1000}${secure}`);
 }
 
 export async function endSessions(res, email) {
-  await run("DELETE FROM sessions WHERE email = ?", email);
+  await col("sessions").deleteMany({ email });
   res.setHeader("Set-Cookie", `${COOKIE}=; Path=/; Max-Age=0`);
 }
 
@@ -22,10 +22,8 @@ export async function endSessions(res, email) {
 export async function requireAdmin(req, res, next) {
   try {
     const token = tokenFrom(req);
-    const user = token && (await one(
-      "SELECT u.email, u.name, u.role, u.pass FROM sessions s JOIN users u ON u.email = s.email WHERE s.token = ? AND s.expires > ?",
-      token, Date.now()
-    ));
+    const session = token && (await col("sessions").findOne({ token, expiresAt: { $gt: new Date() } }));
+    const user = session && (await col("users").findOne({ email: session.email }));
     if (!user) return res.status(401).json({ error: "Sign in required." });
     if (req.method !== "GET" && req.get("X-Requested-With") !== "aurum") return res.status(403).json({ error: "Bad request origin." });
     req.user = user;

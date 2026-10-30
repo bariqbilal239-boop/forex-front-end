@@ -1,54 +1,43 @@
-// Database: Turso / libSQL (SQLite-compatible).
-// - On Vercel: set TURSO_DATABASE_URL + TURSO_AUTH_TOKEN (a hosted database; Vercel has no permanent disk).
-// - Locally: with no TURSO_DATABASE_URL, a file at data/aurum.db is used.
+// Database: MongoDB (Atlas). Set MONGODB_URI (and optionally MONGODB_DB) in .env or in Vercel.
+// The client is cached on globalThis so serverless invocations reuse one connection.
 import fs from "node:fs";
-import { createClient } from "@libsql/client";
+import { MongoClient } from "mongodb";
 import { hashPassword, randomId, slugify } from "./util.js";
 
+const DB_NAME = process.env.MONGODB_DB || "aurum";
+
 function connect() {
-  if (process.env.TURSO_DATABASE_URL) {
-    return createClient({ url: process.env.TURSO_DATABASE_URL, authToken: process.env.TURSO_AUTH_TOKEN });
-  }
-  if (process.env.VERCEL) throw new Error("TURSO_DATABASE_URL is required on Vercel.");
-  fs.mkdirSync("data", { recursive: true });
-  return createClient({ url: "file:data/aurum.db" });
+  if (!process.env.MONGODB_URI) throw new Error("MONGODB_URI is not set. Add it to .env (local) or the Vercel project settings.");
+  globalThis.__aurumMongo ??= new MongoClient(process.env.MONGODB_URI, { maxPoolSize: 10, serverSelectionTimeoutMS: 10_000 }).connect();
+  return globalThis.__aurumMongo;
 }
 
-const client = connect();
+let database;
 
-/** All rows. */
-export const all = async (sql, ...args) => (await client.execute({ sql, args })).rows.map((r) => ({ ...r }));
-/** First row or undefined. */
-export const one = async (sql, ...args) => (await all(sql, ...args))[0];
-/** Run a write; returns { rowsAffected }. */
-export const run = async (sql, ...args) => client.execute({ sql, args });
+/** A collection by name. Only call after `ready` has resolved (every /api request waits for it). */
+export const col = (name) => database.collection(name);
 
-const SCHEMA = [
-  `CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'Administrator', pass TEXT NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, email TEXT NOT NULL, expires INTEGER NOT NULL)`,
-  `CREATE TABLE IF NOT EXISTS posts (
-    id TEXT PRIMARY KEY, slug TEXT UNIQUE NOT NULL, title TEXT NOT NULL, subtitle TEXT DEFAULT '', body TEXT DEFAULT '',
-    category TEXT, author TEXT, label TEXT, status TEXT NOT NULL DEFAULT 'Draft', date TEXT, visibility TEXT DEFAULT 'Public',
-    tags TEXT DEFAULT '[]', featured INTEGER DEFAULT 0, newsletter INTEGER DEFAULT 0, breaking INTEGER DEFAULT 0,
-    image TEXT, imageAlt TEXT, metaTitle TEXT, metaDesc TEXT, mins INTEGER DEFAULT 1, views INTEGER DEFAULT 0, updated INTEGER)`,
-  `CREATE TABLE IF NOT EXISTS messages (
-    id TEXT PRIMARY KEY, name TEXT, email TEXT, category TEXT, subject TEXT, message TEXT, note TEXT,
-    status TEXT DEFAULT 'New', at INTEGER, replies TEXT NOT NULL DEFAULT '[]')`,
-  `CREATE TABLE IF NOT EXISTS subscribers (email TEXT PRIMARY KEY, source TEXT, at INTEGER, status TEXT NOT NULL DEFAULT 'Pending', token TEXT)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS subscribers_token ON subscribers(token)`,
-  `CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
-];
+/** Hide Mongo's internal _id from API responses. */
+export const NO_ID = { projection: { _id: 0 } };
 
-async function migrate() {
-  for (const sql of SCHEMA) await run(sql);
+async function setup() {
+  database = (await connect()).db(DB_NAME);
 
-  // Columns added after the first release
-  const cols = async (table) => (await all(`PRAGMA table_info(${table})`)).map((c) => c.name);
-  if (!(await cols("subscribers")).includes("status")) await run("ALTER TABLE subscribers ADD COLUMN status TEXT NOT NULL DEFAULT 'Confirmed'");
-  if (!(await cols("subscribers")).includes("token")) await run("ALTER TABLE subscribers ADD COLUMN token TEXT");
-  if (!(await cols("messages")).includes("replies")) await run("ALTER TABLE messages ADD COLUMN replies TEXT NOT NULL DEFAULT '[]'");
+  await Promise.all([
+    col("users").createIndex({ email: 1 }, { unique: true }),
+    col("sessions").createIndex({ token: 1 }, { unique: true }),
+    col("sessions").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }), // Mongo deletes expired sessions
+    col("posts").createIndex({ id: 1 }, { unique: true }),
+    col("posts").createIndex({ slug: 1 }, { unique: true }),
+    col("posts").createIndex({ status: 1, date: -1 }),
+    col("messages").createIndex({ id: 1 }, { unique: true }),
+    col("messages").createIndex({ at: -1 }),
+    col("subscribers").createIndex({ email: 1 }, { unique: true }),
+    col("subscribers").createIndex({ token: 1 }, { unique: true, sparse: true }),
+    col("settings").createIndex({ key: 1 }, { unique: true }),
+  ]);
 
-  if (!(await one("SELECT 1 AS x FROM users"))) await seed();
+  if (!(await col("users").findOne({}))) await seed();
 }
 
 async function seed() {
@@ -57,10 +46,11 @@ async function seed() {
   if (!password) {
     if (process.env.VERCEL) throw new Error("Set ADMIN_EMAIL and ADMIN_PASSWORD before the first deploy.");
     password = randomId(9);
+    fs.mkdirSync("data", { recursive: true });
     fs.writeFileSync("data/first-login.txt", `Admin login\nEmail: ${email}\nPassword: ${password}\nChange it after signing in, then delete this file.\n`);
     console.log("Created admin account — login saved in data/first-login.txt");
   }
-  await run("INSERT INTO users (email, name, pass) VALUES (?, ?, ?)", email, "Site Admin", hashPassword(password));
+  await col("users").insertOne({ email, name: "Site Admin", role: "Administrator", pass: hashPassword(password) });
 
   const samples = [
     ["Why central banks keep buying gold — and what it means for price floors", "Gold Analysis", "Sarah Mitchell", "Official-sector demand has reshaped gold's downside. We quantify the effect.", "2026-10-30"],
@@ -68,21 +58,23 @@ async function seed() {
     ["Spot Bitcoin ETF flows: reading the signal through the noise", "Bitcoin & Crypto", "Daniel Kim", "Daily flow data is volatile. A rolling view tells a clearer story.", "2026-10-28"],
     ["Position sizing 101: the 1% rule and why it keeps traders solvent", "Trading Education", "Priya Nair", "A step-by-step guide to sizing trades around risk, not conviction.", "2026-10-25"],
   ];
-  for (const [title, category, author, excerpt, date] of samples) {
-    await run(
-      "INSERT INTO posts (id, slug, title, subtitle, body, category, author, label, status, date, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Published', ?, ?)",
-      randomId(), slugify(title), title, excerpt, `<h2>Summary</h2><p>${excerpt}</p>`, category, author,
-      category === "Trading Education" ? "Education" : "Analysis / Opinion", date, Date.now()
-    );
-  }
+  await col("posts").insertMany(
+    samples.map(([title, category, author, excerpt, date]) => ({
+      id: randomId(), slug: slugify(title), title, subtitle: excerpt, body: `<h2>Summary</h2><p>${excerpt}</p>`,
+      category, author, label: category === "Trading Education" ? "Education" : "Analysis / Opinion",
+      status: "Published", date, visibility: "Public", tags: [], featured: false, newsletter: false, breaking: false,
+      mins: 1, views: 0, updated: Date.now(),
+    }))
+  );
 }
 
-/** Resolves once the schema exists. Every request waits on this (instant after the first). */
-export const ready = migrate();
+/** Resolves once connected and indexed. Every /api request waits on this (instant after the first). */
+export const ready = setup();
+ready.catch((err) => console.error("[db] setup failed:", err.message));
 
 // ---- key/value settings ----
 export async function getSetting(key, fallback) {
-  const row = await one("SELECT value FROM settings WHERE key = ?", key);
-  return row ? JSON.parse(row.value) : fallback;
+  const doc = await col("settings").findOne({ key });
+  return doc ? doc.value : fallback;
 }
-export const setSetting = (key, value) => run("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", key, JSON.stringify(value));
+export const setSetting = (key, value) => col("settings").updateOne({ key }, { $set: { value } }, { upsert: true });

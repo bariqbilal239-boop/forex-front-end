@@ -1,6 +1,6 @@
 # Aurum Markets — Backend & Admin Panel
 
-Node.js (Express 5) API with a Turso / SQLite database, ready to deploy on **Vercel**, the admin panel / blog CMS,
+Node.js (Express 5) API with a **MongoDB Atlas** database, ready to deploy on **Vercel**, the admin panel / blog CMS,
 branded email templates (SMTP) and a market-data integration (Twelve Data).
 Works with the Next.js website in [forex-website](https://github.com/bariqbilal239-boop/forex-website).
 
@@ -14,18 +14,19 @@ cp .env.example .env   # optional
 npm start              # http://localhost:5173/admin.html
 ```
 
-Locally it uses the file `data/aurum.db`. On first start it creates `data/first-login.txt` with the admin email and a
-random password (unless `ADMIN_PASSWORD` is set). Sign in, then delete that file.
+Set `MONGODB_URI` in `.env` (see `.env.example`). On first start it creates the collections, indexes, sample posts and
+the admin account from `ADMIN_EMAIL` / `ADMIN_PASSWORD` (locally, an empty password is generated into `data/first-login.txt`).
 
 ## Deploy on Vercel
 
-1. Create a free database at [turso.tech](https://turso.tech) (or in Vercel → **Storage** → Turso) and copy its URL and auth token.
+1. In MongoDB Atlas: **Network Access → Add IP Address → Allow access from anywhere (`0.0.0.0/0`)** — Vercel has no fixed IP. Copy your connection string.
 2. Import this repo in Vercel. Framework preset: **Other**. No build command needed (`vercel.json` handles it).
-3. Add the environment variables below (at least `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `PUBLIC_API_URL`, `SITE_URL`, `CORS_ORIGINS`).
+3. Add the environment variables below (at least `MONGODB_URI`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `PUBLIC_API_URL`, `SITE_URL`, `CORS_ORIGINS`).
 4. Deploy. The admin panel is at `https://<your-backend>.vercel.app/admin.html`.
 
 How it fits serverless: `api/index.js` runs the Express app as one function; `public/` (admin panel) is served by Vercel's CDN;
-market prices are cached in the database and refreshed on demand (no timers); emails are sent before each response finishes.
+the MongoDB connection is reused between requests; market prices are cached in the database and refreshed on demand
+(no timers); emails are sent before each response finishes; expired login sessions are removed by a MongoDB TTL index.
 
 ## Structure
 
@@ -34,7 +35,7 @@ src/
   app.js             Express app, security headers, CORS
   server.js          Local dev server (app.listen)
   env.js             .env loader
-  db.js              Turso/libSQL client, schema, migrations, first-run admin
+  db.js              MongoDB connection, indexes, first-run admin and sample posts
   auth.js            Cookie sessions, requireAdmin middleware (CSRF header check)
   util.js            Password hashing, HTML cleaning, rate limiting, helpers
   routes/
@@ -85,8 +86,8 @@ Copy `.env.example` to `.env`. Values don't need quotes.
 
 | Variable | Required | What it does |
 |---|---|---|
-| `TURSO_DATABASE_URL` | **Vercel** | Turso database URL (`libsql://…`). Empty locally → `data/aurum.db` |
-| `TURSO_AUTH_TOKEN` | **Vercel** | Turso auth token |
+| `MONGODB_URI` | **yes** | MongoDB Atlas connection string (`mongodb+srv://…`) |
+| `MONGODB_DB` | no | Database name (default `aurum`) |
 | `PORT` | no | Local port (default 5173); ignored on Vercel |
 | `NODE_ENV` | prod | `production` makes the login cookie HTTPS-only |
 | `PUBLIC_API_URL` | prod | Public URL of this backend, used in email links |
