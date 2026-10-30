@@ -169,10 +169,18 @@ function renderInbox() {
   <div class="cp" style="padding:28px"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><div><span class="badge gold plain">${esc(curMsg.category)}</span><h2 style="font-size:20px;margin:10px 0 4px">${esc(curMsg.subject)}</h2><span class="muted">${esc(curMsg.name)} · ${esc(curMsg.email)} · ${new Date(curMsg.at).toLocaleString()}</span></div>
   <div class="row"><button class="btn sm" id="mres">${curMsg.status === 'Resolved' ? 'Reopen' : 'Mark resolved'}</button><button class="btn sm danger" id="mdel">Delete</button></div></div>
   <p style="margin:22px 0;line-height:1.75;color:#CBD5E1;white-space:pre-wrap">${esc(curMsg.message)}</p>
-  <textarea class="input" rows="4" id="mnote" placeholder="Internal note…">${esc(curMsg.note || '')}</textarea><div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn" id="mnotes">Save note</button><a class="btn gold" href="mailto:${encodeURIComponent(curMsg.email)}?subject=${encodeURIComponent('Re: ' + curMsg.subject)}">Reply by email</a></div></div>`;
+  ${JSON.parse(curMsg.replies || '[]').map(r => `<div style="margin:0 0 14px;padding:14px 16px;border-left:3px solid var(--gold);background:var(--mid);border-radius:0 10px 10px 0"><div class="muted" style="font-size:12px;margin-bottom:6px">Reply by ${esc(r.by)} · ${new Date(r.at).toLocaleString()}</div><div style="white-space:pre-wrap">${esc(r.text)}</div></div>`).join('')}
+  <textarea class="input" rows="5" id="mreply" placeholder="Write a reply to ${esc(curMsg.name)}… (sent by email)"></textarea><div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn gold" id="msend">Send reply</button></div>
+  <details style="margin-top:18px"><summary class="muted" style="cursor:pointer;font-size:13px">Internal note</summary><textarea class="input" rows="3" id="mnote" style="margin-top:8px" placeholder="Only visible to the team…">${esc(curMsg.note || '')}</textarea><div class="row" style="margin-top:8px;justify-content:flex-end"><button class="btn sm" id="mnotes">Save note</button></div></details></div>`;
   box.querySelectorAll('.msg-it').forEach(el => el.onclick = () => { curMsg = ms.find(m => m.id === el.dataset.id); renderInbox(); });
   $('#mres').onclick = () => upd({ status: curMsg.status === 'Resolved' ? 'New' : 'Resolved' });
   $('#mnotes').onclick = () => upd({ note: $('#mnote').value });
+  $('#msend').onclick = async () => {
+    const reply = $('#mreply').value.trim(); if (!reply) return toast('Write a reply first');
+    const b = $('#msend'); b.disabled = true; b.textContent = 'Sending…';
+    try { Object.assign(curMsg, await call('POST', '/api/messages/' + curMsg.id + '/reply', { reply })); renderInbox(); toast(D.integrations?.email ? 'Reply sent to ' + curMsg.email : 'Reply saved — email not configured, see data/outbox'); }
+    catch (e) { fail(e); b.disabled = false; b.textContent = 'Send reply'; }
+  };
   $('#mdel').onclick = async () => { if (!confirm('Delete this message permanently?')) return; try { await call('DELETE', '/api/messages/' + curMsg.id); D.messages = D.messages.filter(m => m !== curMsg); renderInbox(); toast('Message deleted'); } catch (e) { fail(e); } };
 }
 async function upd(b) { try { Object.assign(curMsg, await call('PUT', '/api/messages/' + curMsg.id, b)); renderInbox(); toast('Saved'); } catch (e) { fail(e); } }
@@ -180,19 +188,48 @@ async function upd(b) { try { Object.assign(curMsg, await call('PUT', '/api/mess
 // ---------- subscribers ----------
 const SV = $('#v-subscribers');
 SV.querySelector('.kpi b').textContent = '0';
-SV.querySelector('.grid.g4').insertAdjacentHTML('afterend', '<div class="card" style="margin-bottom:20px"><div class="ch"><h3>Subscribers</h3></div><div class="tw"><table><thead><tr><th>Email</th><th>Joined</th><th>Source</th><th></th></tr></thead><tbody id="subT"></tbody></table></div></div>');
+SV.querySelector('.grid.g4').insertAdjacentHTML('afterend', `<div class="card cp" id="camp" style="margin-bottom:20px" hidden><h3 style="margin-bottom:14px">New campaign</h3>
+  <div class="field"><label>Subject</label><input class="input" id="cSub" placeholder="Daily Gold Brief — …"></div>
+  <div class="field"><label>Message <span class="muted">(plain text — leave a blank line between paragraphs)</span></label><textarea class="input" id="cBody" rows="8"></textarea></div>
+  <div class="row" style="justify-content:flex-end;flex-wrap:wrap"><button class="btn" id="cCancel">Cancel</button><button class="btn" id="cTest">Send test to me</button><button class="btn gold" id="cSend">Send to subscribers</button></div></div>
+<div class="card" style="margin-bottom:20px"><div class="ch"><h3>Subscribers</h3></div><div class="tw"><table><thead><tr><th>Email</th><th>Status</th><th>Joined</th><th>Source</th><th></th></tr></thead><tbody id="subT"></tbody></table></div></div>
+<div class="card cp" style="margin-bottom:20px"><h3 style="margin-bottom:6px">Email templates</h3><p class="muted" style="font-size:13px;margin-bottom:12px">Preview the emails your readers and team receive.</p><div class="row" style="flex-wrap:wrap;gap:8px">${['confirm-subscription','welcome','campaign','contact-auto-reply','contact-notification','contact-reply','password-changed'].map(n => `<a class="btn sm" target="_blank" href="/api/emails/preview/${n}">${n.replace(/-/g, ' ')} ↗</a>`).join('')}</div></div>`);
 function renderSubs() {
-  SV.querySelector('.kpi b').textContent = D.subscribers.length.toLocaleString();
-  $('#subT').innerHTML = D.subscribers.length ? D.subscribers.map(s => `<tr><td><b>${esc(s.email)}</b></td><td class="num muted">${new Date(s.at).toLocaleString()}</td><td class="muted">${esc(s.source || 'website')}</td><td style="text-align:right"><button class="btn sm danger" data-e="${esc(s.email)}">Remove</button></td></tr>`).join('') : '<tr><td colspan="4" class="muted" style="text-align:center;padding:32px">No subscribers yet — sign-ups from the website appear here.</td></tr>';
+  const confirmed = D.subscribers.filter(s => s.status === 'Confirmed');
+  SV.querySelector('.kpi b').textContent = confirmed.length.toLocaleString();
+  $('#cSend').textContent = `Send to ${confirmed.length} subscriber${confirmed.length === 1 ? '' : 's'}`;
+  $('#subT').innerHTML = D.subscribers.length ? D.subscribers.map(s => `<tr><td><b>${esc(s.email)}</b></td><td><span class="badge ${s.status === 'Confirmed' ? 'pub' : s.status === 'Pending' ? 'sch' : 'draft'}">${esc(s.status || 'Confirmed')}</span></td><td class="num muted">${new Date(s.at).toLocaleString()}</td><td class="muted">${esc(s.source || 'website')}</td><td style="text-align:right"><button class="btn sm danger" data-e="${esc(s.email)}">Remove</button></td></tr>`).join('') : '<tr><td colspan="5" class="muted" style="text-align:center;padding:32px">No subscribers yet — sign-ups from the website appear here.</td></tr>';
 }
 SV.addEventListener('click', async e => { const b = e.target.closest('[data-e]'); if (!b || !confirm('Remove ' + b.dataset.e + '?')) return; try { await call('DELETE', '/api/subscribers/' + encodeURIComponent(b.dataset.e)); D.subscribers = D.subscribers.filter(s => s.email !== b.dataset.e); renderSubs(); } catch (er) { fail(er); } });
 const exp = [...SV.querySelectorAll('.ph .btn')].find(b => b.textContent === 'Export');
-if (exp) exp.onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['email,joined\n' + D.subscribers.map(s => `${s.email},${new Date(s.at).toISOString()}`).join('\n')], { type: 'text/csv' })); a.download = 'subscribers.csv'; a.click(); };
+if (exp) exp.onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['email,status,joined\n' + D.subscribers.map(s => `${s.email},${s.status},${new Date(s.at).toISOString()}`).join('\n')], { type: 'text/csv' })); a.download = 'subscribers.csv'; a.click(); };
+
+const newCamp = [...SV.querySelectorAll('.ph .btn')].find(b => /campaign/i.test(b.textContent));
+if (newCamp) newCamp.onclick = () => { $('#camp').hidden = false; $('#cSub').focus(); };
+$('#cCancel').onclick = () => { $('#camp').hidden = true; };
+async function sendCampaign(test) {
+  const subject = $('#cSub').value.trim(), body = $('#cBody').value.trim();
+  if (!subject || !body) return toast('Add a subject and message');
+  const n = D.subscribers.filter(s => s.status === 'Confirmed').length;
+  if (!test && !confirm(`Send "${subject}" to ${n} subscriber(s)? This can't be undone.`)) return;
+  try { const r = await call('POST', '/api/campaigns', { subject, body, test }); toast(test ? 'Test sent to your email' : `Sent to ${r.sent} subscriber(s)${r.failed ? ', ' + r.failed + ' failed' : ''}`); if (!test) $('#camp').hidden = true; }
+  catch (e) { fail(e); }
+}
+$('#cTest').onclick = () => sendCampaign(true);
+$('#cSend').onclick = () => sendCampaign(false);
+
+// ---------- integrations status ----------
+function renderIntegrations() {
+  const m = D.integrations?.markets; if (!m) return;
+  $('#mkProvider').textContent = m.configured ? (m.error ? 'Twelve Data · error' : 'Twelve Data · connected') : 'Not connected';
+  if (m.configured) $('#mkProviderNote').textContent = m.error ? 'Last refresh failed: ' + m.error : 'Last update: ' + (m.updated ? new Date(m.updated).toLocaleString() : 'pending…');
+  $('#mkMode').textContent = m.mode === 'delayed' ? 'Delayed data' : 'Illustrative sample';
+}
 
 // ---------- load ----------
 async function load() {
   try { D = await call('GET', '/api/admin'); } catch { return; }
-  renderPosts(); counts(); fillForms(); renderInbox(); renderSubs();
+  renderPosts(); counts(); fillForms(); renderInbox(); renderSubs(); renderIntegrations();
   if (location.hash === '#editor' && !cur) fillEditor(null);
   const unread = D.messages.filter(m => m.status === 'New').length, ib = document.querySelector('.sb a[href="#inbox"]');
   if (ib) { ib.querySelector('.cnt')?.remove(); if (unread) ib.insertAdjacentHTML('beforeend', `<span class="cnt" style="margin-left:auto;background:var(--gold);color:#0B1220;border-radius:999px;padding:0 7px;font-size:11px;font-weight:700">${unread}</span>`); }

@@ -30,6 +30,13 @@ CREATE TABLE IF NOT EXISTS subscribers (email TEXT PRIMARY KEY, source TEXT, at 
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `);
 
+// ---- migrations for databases created by earlier versions ----
+const hasColumn = (table, col) => db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col);
+if (!hasColumn("subscribers", "status")) db.exec("ALTER TABLE subscribers ADD COLUMN status TEXT NOT NULL DEFAULT 'Confirmed'");
+if (!hasColumn("subscribers", "token")) db.exec("ALTER TABLE subscribers ADD COLUMN token TEXT");
+if (!hasColumn("messages", "replies")) db.exec("ALTER TABLE messages ADD COLUMN replies TEXT NOT NULL DEFAULT '[]'");
+db.exec("CREATE UNIQUE INDEX IF NOT EXISTS subscribers_token ON subscribers(token)");
+
 // ---- first run: admin account + sample posts ----
 if (!db.prepare("SELECT 1 FROM users").get()) {
   const email = (process.env.ADMIN_EMAIL || "admin@aurum.local").toLowerCase();

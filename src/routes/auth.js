@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { createSession, endSessions, requireAdmin } from "../auth.js";
 import { db } from "../db.js";
+import { passwordChanged } from "../emails/templates.js";
+import { sendInBackground } from "../services/mailer.js";
 import { hashPassword, rateLimit, str, verifyPassword } from "../util.js";
 
 const router = Router();
@@ -25,6 +27,7 @@ router.post("/password", requireAdmin, (req, res) => {
   const next = str(req.body.next, 200);
   if (next.length < 10) return res.status(400).json({ error: "Use at least 10 characters." });
   db.prepare("UPDATE users SET pass = ? WHERE email = ?").run(hashPassword(next), req.user.email);
+  sendInBackground({ to: req.user.email, ...passwordChanged({ name: req.user.name }) });
   res.json({ ok: true });
 });
 

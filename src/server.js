@@ -6,6 +6,7 @@ import audience from "./routes/audience.js";
 import auth from "./routes/auth.js";
 import posts from "./routes/posts.js";
 import site from "./routes/site.js";
+import { startMarketFeed } from "./services/markets.js";
 
 const PORT = Number(process.env.PORT) || 5173;
 const ORIGINS = (process.env.CORS_ORIGINS || "http://localhost:3000").split(",").map((s) => s.trim());
@@ -53,5 +54,7 @@ app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ error: "Server error." });
 });
+
+startMarketFeed();
 
 app.listen(PORT, () => console.log(`Aurum API + admin running: http://localhost:${PORT}/admin.html`));

@@ -2,6 +2,8 @@
 import { Router } from "express";
 import { requireAdmin } from "../auth.js";
 import { db } from "../db.js";
+import { emailEnabled } from "../services/mailer.js";
+import { getMarkets, marketStatus } from "../services/markets.js";
 import { str } from "../util.js";
 import { toPost } from "./posts.js";
 
@@ -19,6 +21,9 @@ const limitStrings = (v) => JSON.parse(JSON.stringify(v ?? null, (_, x) => (type
 // Public: hero, menus, disclaimer, contact details for the website
 router.get("/public/site", (req, res) => res.json(getSetting("site", {})));
 
+// Public: cached market prices (mode "sample" until a provider key is configured)
+router.get("/public/markets", (req, res) => res.json(getMarkets()));
+
 // Admin: everything the panel needs on load
 router.get("/admin", requireAdmin, (req, res) => {
   res.json({
@@ -26,7 +31,8 @@ router.get("/admin", requireAdmin, (req, res) => {
     site: getSetting("site", {}),
     forms: getSetting("forms", {}),
     messages: db.prepare("SELECT * FROM messages ORDER BY at DESC").all(),
-    subscribers: db.prepare("SELECT * FROM subscribers ORDER BY at DESC").all(),
+    subscribers: db.prepare("SELECT email, source, at, status FROM subscribers ORDER BY at DESC").all(),
+    integrations: { markets: marketStatus(), email: emailEnabled() },
   });
 });
 
