@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aurum Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0B1220;--side:#080E1A;--mid:#111827;--card:#182230;--card2:#1E2A3B;--border:#243044;--gold:#D4AF37;--gsoft:rgba(212,175,55,.12);--text:#F8FAFC;--muted:#94A3B8;--bull:#16A34A;--bear:#DC2626;--info:#3B82F6;--warn:#F59E0B;--mono:"JetBrains Mono",monospace}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--navy);color:var(--text);font:400 14px/1.55 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}button,input,select,textarea{font:inherit;color:inherit}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}.muted{color:var(--muted)}.up{color:var(--bull)}.down{color:var(--bear)}
+.app{display:grid;grid-template-columns:256px 1fr;min-height:100vh}
+/* sidebar */
+aside.sb{background:var(--side);border-right:1px solid var(--border);position:sticky;top:0;height:100vh;overflow:auto;padding:18px 14px;display:flex;flex-direction:column}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;padding:4px 8px 18px}
+.logo i{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,#F0D77A,#B8921F);display:grid;place-items:center;color:#0B1220;font-style:normal;font-size:13px}
+.logo small{font-size:10px;font-weight:700;color:var(--gold);background:var(--gsoft);padding:2px 6px;border-radius:4px;letter-spacing:.06em}
+.grp{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#64748B;font-weight:700;padding:16px 10px 6px}
+.sb a.it{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;color:var(--muted);font-weight:500;font-size:13.5px}
+.sb a.it:hover{background:var(--card);color:var(--text)}
+.sb a.it.on{background:var(--gsoft);color:var(--gold);font-weight:600}
+.sb a.it svg{width:17px;height:17px;flex:none}
+.sb a.it em{margin-left:auto;font-style:normal;font-size:11px;background:var(--card2);padding:1px 7px;border-radius:999px;color:var(--text)}
+.sb a.it em.r{background:var(--bear)}
+.me{margin-top:auto;display:flex;gap:10px;align-items:center;padding:12px 8px 0;border-top:1px solid var(--border)}
+/* topbar */
+.top{height:64px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px;padding:0 28px;position:sticky;top:0;background:rgba(11,18,32,.95);backdrop-filter:blur(8px);z-index:10}
+.crumb{font-size:13px;color:var(--muted)}.crumb b{color:var(--text)}
+.srch{margin-left:auto;position:relative;width:320px}
+.srch input{width:100%;height:38px;border-radius:8px;border:1px solid var(--border);background:var(--mid);padding:0 12px 0 36px;outline:none}
+.srch svg{position:absolute;left:11px;top:11px;color:var(--muted)}
+.srch kbd{position:absolute;right:8px;top:8px;font-size:11px;border:1px solid var(--border);border-radius:4px;padding:1px 6px;color:var(--muted)}
+.ib{width:38px;height:38px;border-radius:8px;border:1px solid var(--border);background:none;display:grid;place-items:center;color:var(--muted);cursor:pointer;position:relative}
+.ib b{position:absolute;top:7px;right:8px;width:7px;height:7px;background:var(--bear);border-radius:50%}
+.av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#C9A43A,#6B5413);display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+.av.s{width:26px;height:26px;font-size:10px;background:linear-gradient(135deg,#475569,#1E293B)}
+main{padding:28px;min-width:0}
+.ph{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:24px;flex-wrap:wrap}
+.ph h1{font-size:26px;font-weight:800;letter-spacing:-.025em}
+.ph p{color:var(--muted);margin-top:2px}
+.acts{display:flex;gap:10px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border-radius:8px;font-weight:600;font-size:13.5px;border:1px solid var(--border);background:var(--card);cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:#3A4A63}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#0B1220}.btn.gold:hover{background:#E2C25A}
+.btn.danger{color:#F87171}
+.btn.sm{height:30px;padding:0 10px;font-size:12.5px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px}
+.cp{padding:20px}
+.ch{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border)}
+.ch h3{font-size:15px;font-weight:700}
+.grid{display:grid;gap:20px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.kpi{padding:18px 20px}.kpi span{font-size:12px;color:var(--muted);font-weight:500}.kpi b{display:block;font-size:26px;font-weight:700;margin:4px 0 2px;letter-spacing:-.02em}.kpi small{font-size:12px;font-weight:600}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--card2);color:var(--muted);white-space:nowrap}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.badge.pub{background:rgba(22,163,74,.14);color:#4ADE80}.badge.draft{color:#CBD5E1}.badge.sch{background:rgba(59,130,246,.14);color:#93C5FD}.badge.rev{background:rgba(245,158,11,.14);color:#FCD34D}.badge.red{background:rgba(220,38,38,.14);color:#F87171}
+.badge.gold{background:var(--gsoft);color:var(--gold)}.badge.plain::before{display:none}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:11px 16px;border-bottom:1px solid var(--border);background:rgba(17,24,39,.5);white-space:nowrap}
+td{padding:12px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:0}tbody tr:hover{background:rgba(30,42,59,.5)}
+.tw{overflow-x:auto}
+.thumb{width:56px;height:38px;border-radius:6px;flex:none;background:linear-gradient(135deg,#3A2E0B,#121826)}
+.t-btc{background:linear-gradient(135deg,#4a2a08,#121826)}.t-fx{background:linear-gradient(135deg,#0E2142,#121826)}.t-edu{background:linear-gradient(135deg,#2a1640,#121826)}.t-fed{background:linear-gradient(135deg,#334155,#0B1220)}
+.ttl{display:flex;gap:12px;align-items:center}.ttl b{display:block;font-weight:600}.ttl span{font-size:12px;color:var(--muted)}
+.chk{width:16px;height:16px;accent-color:var(--gold)}
+.tb{display:flex;gap:10px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:20px}
+.tabs button{background:none;border:0;padding:10px 14px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button.on{color:var(--text);border-color:var(--gold)}
+.tabs button em{font-style:normal;font-size:11px;background:var(--card2);padding:1px 7px;border-radius:999px;margin-left:6px}
+.input{height:38px;padding:0 12px;background:var(--mid);border:1px solid var(--border);border-radius:8px;outline:none;width:100%}
+.input:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gsoft)}
+textarea.input{height:auto;padding:10px 12px;resize:vertical}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}.field label{font-size:12.5px;font-weight:600}.field small{font-size:12px;color:var(--muted)}
+.pag{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;font-size:13px;color:var(--muted)}
+.pag div{display:flex;gap:4px}.pag button{width:32px;height:32px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer}.pag button.on{background:var(--gold);color:#0B1220;border-color:var(--gold);font-weight:700}
+.sw{position:relative;width:36px;height:20px;flex:none;cursor:pointer}
+.sw input{opacity:0;position:absolute}.sw i{position:absolute;inset:0;background:#334155;border-radius:999px;transition:.15s}
+.sw i::after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:.15s}
+.sw input:checked+i{background:var(--gold)}.sw input:checked+i::after{left:19px}
+.row{display:flex;align-items:center;gap:12px}
+.list-it{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border)}.list-it:last-child{border:0}
+.drag{color:#475569;cursor:grab;font-size:16px;letter-spacing:-2px}
+.sec-it{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:var(--mid);margin-bottom:10px}
+.sec-it.sel{border-color:var(--gold);box-shadow:0 0 0 3px var(--gsoft)}
+.sec-it .ic{width:36px;height:36px;border-radius:8px;background:var(--card2);display:grid;place-items:center;color:var(--gold);font-weight:700;font-size:13px}
+.view{display:none}.view.on{display:block}
+.chart{width:100%;height:240px;display:block}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+/* editor */
+.ed{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
+.paper{background:#fff;color:#0B1220;border-radius:12px;overflow:hidden}
+.etool{display:flex;gap:2px;padding:8px 10px;border-bottom:1px solid #E2E8F0;background:#F8FAFC;flex-wrap:wrap}
+.etool button{height:32px;min-width:32px;padding:0 8px;border:0;background:none;border-radius:6px;cursor:pointer;color:#334155;font-weight:600;font-size:13px}
+.etool button:hover{background:#E2E8F0}.etool span{width:1px;background:#E2E8F0;margin:4px 6px}
+.ebody{padding:40px 56px 56px}
+.ebody .tin{font-size:34px;font-weight:800;letter-spacing:-.03em;border:0;outline:none;width:100%;line-height:1.2;resize:none;background:none;color:#0B1220}
+.ebody .sub{font-size:18px;color:#475569;border:0;outline:none;width:100%;resize:none;margin-top:8px;background:none}
+.ebody [contenteditable]{outline:none;font-size:17px;line-height:1.75;color:#1E293B}
+.ebody [contenteditable] h2{font-size:24px;margin:28px 0 10px;color:#0B1220}
+.ebody [contenteditable] p{margin-bottom:14px}
+.blk{border:1px dashed #CBD5E1;border-radius:10px;padding:16px;margin:18px 0;background:#F8FAFC;font-size:14px;color:#475569}
+.blk b{color:#0B1220}
+.addblk{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px;padding-top:16px;border-top:1px solid #E2E8F0}
+.addblk button{border:1px solid #E2E8F0;background:#fff;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;color:#334155;cursor:pointer}
+.addblk button:hover{border-color:#A8861C;color:#8A6D12}
+.dz{border:1.5px dashed var(--border);border-radius:10px;aspect-ratio:16/9;display:grid;place-items:center;text-align:center;color:var(--muted);font-size:13px;background:linear-gradient(135deg,#3A2E0B,#121826);position:relative}
+.serp{background:var(--mid);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px}
+.serp b{color:#8AB4F8;font-weight:500;font-size:15px;display:block}
+.serp .u{color:#4ADE80;font-size:12px}
+.meter{height:6px;border-radius:3px;background:var(--mid);overflow:hidden}.meter i{display:block;height:100%}
+.media{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
+.media div{aspect-ratio:1;border-radius:10px;border:1px solid var(--border);position:relative;overflow:hidden}
+.media div span{position:absolute;left:0;right:0;bottom:0;padding:6px 8px;font-size:11px;background:linear-gradient(transparent,rgba(0,0,0,.7))}
+.toast{position:fixed;right:24px;bottom:24px;background:var(--card);border:1px solid rgba(22,163,74,.5);border-radius:10px;padding:12px 16px;display:none;gap:10px;align-items:center;box-shadow:0 20px 40px -10px #000;z-index:50}
+.toast.show{display:flex}
+.note{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.feed{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+.inbox{display:grid;grid-template-columns:380px 1fr;min-height:560px}
+.msg{padding:14px 18px;border-bottom:1px solid var(--border);cursor:pointer}
+.msg.on{background:var(--gsoft);box-shadow:inset 3px 0 0 var(--gold)}
+.msg.unread b{color:var(--text)}.msg.unread::before{content:"";float:right;width:8px;height:8px;border-radius:50%;background:var(--gold);margin-top:6px}
+@media (max-width:1200px){.ed{grid-template-columns:1fr}.g4{grid-template-columns:1fr 1fr}.media{grid-template-columns:repeat(4,1fr)}}
+@media (max-width:900px){.app{grid-template-columns:1fr}aside.sb{display:none}.g2,.g3{grid-template-columns:1fr}.srch{display:none}.inbox{grid-template-columns:1fr}.ebody{padding:24px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sb">
+  <div class="logo"><i>Au</i>Aurum <small>CMS</small></div>
+  <div class="grp">Overview</div>
+  <a class="it" href="#dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>Dashboard</a>
+  <a class="it" href="#analytics"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l5-5 4 4 8-8"/></svg>Analytics</a>
+  <div class="grp">Blog &amp; Content</div>
+  <a class="it" href="#posts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5"/></svg>All Posts<em>248</em></a>
+  <a class="it" href="#editor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>Write New Post</a>
+  <a class="it" href="#categories"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12l-8 8-9-9V3h8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>Categories &amp; Tags</a>
+  <a class="it" href="#news"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6"/></svg>News Desk<em class="r">3</em></a>
+  <a class="it" href="#media"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>Media Library</a>
+  <div class="grp">Website</div>
+  <a class="it" href="#pages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>Pages &amp; Sections</a>
+  <a class="it" href="#menus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Menus &amp; Footer</a>
+  <div class="grp">Market Data</div>
+  <a class="it" href="#markets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18h16M6 18l2-6h8l2 6M9 12l1.5-5h3L15 12"/></svg>Gold &amp; Market Rates</a>
+  <a class="it" href="#calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Economic Calendar</a>
+  <div class="grp">Audience</div>
+  <a class="it" href="#subscribers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/></svg>Newsletter</a>
+  <a class="it" href="#inbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v7H2v-7z"/></svg>Contact Inbox<em class="r">5</em></a>
+  <a class="it" href="#users"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M17 11a3 3 0 1 0 0-6M22 21a6 6 0 0 0-4-5.6"/></svg>Users &amp; Roles</a>
+  <a class="it" href="#settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Site Settings</a>
+  <div class="me"><span class="av">SM</span><div style="flex:1;min-width:0"><b style="font-size:13px;display:block">Sarah Mitchell</b><span class="muted" style="font-size:12px">Administrator</span></div><a href="http://localhost:3000" target="_blank" class="ib" title="View website" style="width:32px;height:32px">↗</a></div>
+</aside>
+
+<div>
+<header class="top">
+  <div class="crumb">Admin <span style="opacity:.5;margin:0 6px">/</span> <b id="crumb">Dashboard</b></div>
+  <label class="srch"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input placeholder="Search posts, pages, media…" aria-label="Search admin"><kbd>⌘K</kbd></label>
+  <button class="ib" aria-label="Notifications"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/></svg><b></b></button>
+  <a href="#editor" class="btn gold">+ New Post</a>
+</header>
+
+<main>
+<!-- DASHBOARD -->
+<section class="view" id="v-dashboard">
+  <div class="ph"><div><h1>Good afternoon, Sarah</h1><p>Here's what's happening on Aurum Markets today · Thu, Oct 30, 2026</p></div><div class="acts"><select class="input" style="width:auto"><option>Last 30 days</option><option>Last 7 days</option><option>This year</option></select><a href="http://localhost:3000" target="_blank" class="btn">View website ↗</a></div></div>
+  <div class="grid g4" style="margin-bottom:20px">
+    <div class="card kpi"><span>Page views</span><b class="num">1.28M</b><small class="up">▲ 12.4% vs last period</small></div>
+    <div class="card kpi"><span>Unique visitors</span><b class="num">342K</b><small class="up">▲ 8.1%</small></div>
+    <div class="card kpi"><span>Newsletter subscribers</span><b class="num">85,214</b><small class="up">▲ 1,932 new</small></div>
+    <div class="card kpi"><span>Avg. read time</span><b class="num">4m 38s</b><small class="down">▼ 0.6%</small></div>
+  </div>
+  <div class="grid" style="grid-template-columns:2fr 1fr;margin-bottom:20px">
+    <div class="card"><div class="ch"><h3>Traffic overview</h3><div class="row note"><span class="dot" style="background:var(--gold)"></span>Page views <span class="dot" style="background:var(--info);margin-left:10px"></span>Visitors</div></div><div class="cp"><svg class="chart" id="trafChart" viewBox="0 0 800 240" preserveAspectRatio="none"></svg></div></div>
+    <div class="card"><div class="ch"><h3>Top categories</h3></div><div class="cp" id="topCats"></div></div>
+  </div>
+  <div class="grid" style="grid-template-columns:2fr 1fr">
+    <div class="card"><div class="ch"><h3>Recent posts</h3><a href="#posts" class="btn sm">View all</a></div><div class="tw"><table><thead><tr><th>Post</th><th>Status</th><th>Views</th><th>Updated</th></tr></thead><tbody id="recent"></tbody></table></div></div>
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="card"><div class="ch"><h3>Quick draft</h3></div><div class="cp"><input class="input" placeholder="Post title" style="margin-bottom:10px"><textarea class="input" rows="3" placeholder="What's on your mind?"></textarea><button class="btn gold" style="margin-top:10px" onclick="toast('Draft saved')">Save draft</button></div></div>
+      <div class="card"><div class="ch"><h3>Scheduled</h3></div>
+        <div class="list-it"><span class="badge sch plain num">Oct 31 · 07:00</span><span>Daily Gold Brief — Oct 31</span></div>
+        <div class="list-it"><span class="badge sch plain num">Nov 01 · 12:00</span><span>NFP Preview: what to expect</span></div>
+        <div class="list-it"><span class="badge sch plain num">Nov 03 · 08:00</span><span>Weekly Outlook: Gold &amp; DXY</span></div></div>
+      <div class="card"><div class="ch"><h3>Data feed health</h3><a href="#markets" class="btn sm">Manage</a></div>
+        <div class="list-it"><span class="dot" style="background:var(--bull)"></span>Gold &amp; FX feed<span class="muted" style="margin-left:auto;font-size:12px">OK · 2s ago</span></div>
+        <div class="list-it"><span class="dot" style="background:var(--warn)"></span>Crypto feed<span class="muted" style="margin-left:auto;font-size:12px">Delayed 15m</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ANALYTICS -->
+<section class="view" id="v-analytics">
+  <div class="ph"><div><h1>Analytics</h1><p>Content performance and audience insights</p></div><div class="acts"><button class="btn">Export CSV</button></div></div>
+  <div class="grid g4" style="margin-bottom:20px">
+    <div class="card kpi"><span>Sessions</span><b class="num">512K</b><small class="up">▲ 9.2%</small></div>
+    <div class="card kpi"><span>Bounce rate</span><b class="num">38.4%</b><small class="up">▼ 2.1%</small></div>
+    <div class="card kpi"><span>Gold page views</span><b class="num">418K</b><small class="up">▲ 21%</small></div>
+    <div class="card kpi"><span>Newsletter conv.</span><b class="num">3.2%</b><small class="up">▲ 0.4pt</small></div>
+  </div>
+  <div class="grid g2">
+    <div class="card"><div class="ch"><h3>Top performing posts</h3></div><div class="tw"><table><thead><tr><th>Post</th><th>Views</th><th>Avg time</th></tr></thead><tbody id="topPosts"></tbody></table></div></div>
+    <div class="card"><div class="ch"><h3>Traffic sources</h3></div><div class="cp" id="sources"></div></div>
+  </div>
+</section>
+
+<!-- POSTS -->
+<section class="view" id="v-posts">
+  <div class="ph"><div><h1>All Posts</h1><p>Create, edit and publish blog articles and market analysis</p></div><div class="acts"><button class="btn">Import</button><a href="#editor" class="btn gold">+ New Post</a></div></div>
+  <div class="tabs" id="ptabs"><button class="on" data-s="">All<em>248</em></button><button data-s="Published">Published<em>212</em></button><button data-s="Draft">Drafts<em>21</em></button><button data-s="Scheduled">Scheduled<em>9</em></button><button data-s="In review">In review<em>6</em></button><button data-s="Trash">Trash</button></div>
+  <div class="card">
+    <div class="tb">
+      <label class="srch" style="margin:0;width:280px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="pq" placeholder="Search posts" oninput="renderPosts()"></label>
+      <select class="input" id="pcat" style="width:auto" onchange="renderPosts()"><option value="">All categories</option></select>
+      <select class="input" style="width:auto"><option>All authors</option><option>Sarah Mitchell</option><option>James Lowe</option><option>Daniel Kim</option></select>
+      <select class="input" style="width:auto"><option>Newest first</option><option>Most viewed</option></select>
+      <div style="margin-left:auto" class="row"><span class="muted" id="selc">0 selected</span><select class="input" style="width:auto"><option>Bulk actions</option><option>Publish</option><option>Move to draft</option><option>Change category</option><option>Move to trash</option></select><button class="btn">Apply</button></div>
+    </div>
+    <div class="tw"><table><thead><tr><th style="width:36px"><input type="checkbox" class="chk" onchange="$$('.pc').forEach(c=>c.checked=this.checked);sel()"></th><th>Title</th><th>Category</th><th>Author</th><th>Status</th><th>Label</th><th>Views</th><th>Date</th><th></th></tr></thead><tbody id="ptable"></tbody></table></div>
+    <div class="pag"><span>Showing 1–10 of 248 posts</span><div><button>‹</button><button class="on">1</button><button>2</button><button>3</button><button>…</button><button>25</button><button>›</button></div></div>
+  </div>
+</section>
+
+<!-- EDITOR -->
+<section class="view" id="v-editor">
+  <div class="ph"><div><a href="#posts" class="muted" style="font-size:13px">← All posts</a><h1 style="margin-top:4px">Edit Post</h1><p><span class="badge draft">Draft</span> &nbsp;Last autosaved 14:31 · Revision 7</p></div>
+    <div class="acts"><button class="btn" onclick="toast('Draft saved')">Save draft</button><a href="http://localhost:3000#article" target="_blank" class="btn">Preview ↗</a><button class="btn gold" onclick="toast('Post published — live on the website')">Publish</button></div></div>
+  <div class="ed">
+    <div class="paper">
+      <div class="etool"><button title="Undo">↶</button><button title="Redo">↷</button><span></span><select style="border:0;background:none;font-weight:600;color:#334155;padding:0 6px"><option>Paragraph</option><option>Heading 2</option><option>Heading 3</option><option>Quote</option></select><span></span><button onclick="document.execCommand('bold')"><b>B</b></button><button onclick="document.execCommand('italic')"><i>I</i></button><button onclick="document.execCommand('underline')"><u>U</u></button><button>🔗</button><span></span><button>• List</button><button>1. List</button><button>❝</button><span></span><button>🖼 Image</button><button>📈 Chart</button><button>▦ Table</button><button>⟨/⟩</button></div>
+      <div class="ebody">
+        <textarea class="tin" rows="2">Gold holds above $2,700 as real yields ease — is the next leg higher already priced in?</textarea>
+        <textarea class="sub" rows="2">Central-bank demand and softer Treasury yields continue to underpin bullion. We map the levels that matter into the next FOMC decision.</textarea>
+        <div style="height:1px;background:#E2E8F0;margin:22px 0"></div>
+        <div contenteditable="true">
+          <h2>Summary</h2>
+          <p>Gold has consolidated in a tight range just above $2,700 an ounce, supported by easing real yields and persistent official-sector demand. Momentum has slowed, however, and positioning suggests much of the good news may already be reflected in price.</p>
+          <div class="blk" contenteditable="false"><b>⚑ Key takeaways block</b> · 3 bullet points · <a style="color:#8A6D12;font-weight:600">Edit</a></div>
+          <h2>Technical picture</h2>
+          <p>Price continues to respect the rising 50-day moving average. Daily RSI has cooled from overbought territory without breaking trend structure.</p>
+          <div class="blk" contenteditable="false"><b>📈 Chart block</b> · XAU/USD · Daily · 3M · Source: market feed (labelled “Illustrative” until feed is live) · <a style="color:#8A6D12;font-weight:600">Configure</a></div>
+          <div class="blk" contenteditable="false"><b>▦ Scenario table</b> · Bullish / Bearish · 2 rows · <a style="color:#8A6D12;font-weight:600">Edit</a></div>
+          <p>Start writing or press <b>/</b> for blocks…</p>
+        </div>
+        <div class="addblk"><span style="font-size:13px;color:#64748B;align-self:center">Add block:</span><button>Paragraph</button><button>Heading</button><button>Image</button><button>Price chart</button><button>Key levels</button><button>Scenario table</button><button>Callout</button><button>Quote</button><button>Embed</button><button>Disclaimer</button></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card cp"><h3 style="font-size:14px;margin-bottom:12px">Publish</h3>
+        <div class="field"><label>Status</label><select class="input"><option>Draft</option><option>In review</option><option>Scheduled</option><option>Published</option></select></div>
+        <div class="field"><label>Publish date</label><input class="input num" type="datetime-local" value="2026-10-31T07:00"></div>
+        <div class="field"><label>Visibility</label><select class="input"><option>Public</option><option>Newsletter subscribers only</option><option>Private</option></select></div>
+        <div class="row" style="justify-content:space-between;margin-top:4px"><span>Feature on homepage</span><label class="sw"><input type="checkbox" checked><i></i></label></div>
+        <div class="row" style="justify-content:space-between;margin-top:10px"><span>Send to newsletter</span><label class="sw"><input type="checkbox"><i></i></label></div>
+        <div class="row" style="justify-content:space-between;margin-top:10px"><span>Pin as breaking</span><label class="sw"><input type="checkbox"><i></i></label></div>
+      </div>
+      <div class="card cp"><h3 style="font-size:14px;margin-bottom:12px">Featured image</h3><div class="dz"><div style="color:#F8FAFC"><b>gold-vault-hero.jpg</b><br><span style="font-size:12px;opacity:.7">1920×1080 · 284 KB</span></div></div><div class="row" style="margin-top:10px"><button class="btn sm">Replace</button><button class="btn sm danger">Remove</button></div><div class="field" style="margin:12px 0 0"><label>Alt text</label><input class="input" value="Stacked gold bullion bars in a vault"></div></div>
+      <div class="card cp"><h3 style="font-size:14px;margin-bottom:12px">Organize</h3>
+        <div class="field"><label>Category</label><select class="input"><option>Gold Analysis</option><option>Forex Trading</option><option>Bitcoin &amp; Crypto</option><option>Technical Analysis</option><option>Fundamental Analysis</option><option>Trading Education</option><option>Market Psychology</option></select></div>
+        <div class="field"><label>Content label</label><select class="input"><option>Analysis / Opinion</option><option>Verified report</option><option>Education</option><option>Sponsored</option></select><small>Shown to readers to separate reporting from analysis.</small></div>
+        <div class="field"><label>Tags</label><div class="row" style="flex-wrap:wrap;gap:6px"><span class="badge plain gold">XAU/USD ✕</span><span class="badge plain gold">FOMC ✕</span><span class="badge plain gold">Real yields ✕</span><input class="input" style="height:28px;width:110px" placeholder="Add tag"></div></div>
+        <div class="field"><label>Author</label><select class="input"><option>Sarah Mitchell</option><option>James Lowe</option><option>Daniel Kim</option></select></div>
+        <div class="field" style="margin:0"><label>Reading time</label><input class="input num" value="8 min (auto)" disabled></div>
+      </div>
+      <div class="card cp"><h3 style="font-size:14px;margin-bottom:12px">SEO &amp; metadata</h3>
+        <div class="field"><label>URL slug</label><input class="input" value="gold-holds-above-2700-real-yields"></div>
+        <div class="field"><label>Meta title <span class="muted num">58/60</span></label><input class="input" value="Gold Holds Above $2,700 as Real Yields Ease | Aurum Markets"></div>
+        <div class="field"><label>Meta description <span class="muted num">148/160</span></label><textarea class="input" rows="3">Central-bank demand and softer Treasury yields underpin gold. Key support, resistance and scenarios ahead of the FOMC decision.</textarea></div>
+        <div class="serp"><span class="u">aurummarkets.com › blog › gold-holds-above-2700…</span><b>Gold Holds Above $2,700 as Real Yields Ease | Aurum Markets</b><span class="muted">Central-bank demand and softer Treasury yields underpin gold…</span></div>
+        <div style="margin-top:14px"><div class="row" style="justify-content:space-between;font-size:12.5px;margin-bottom:6px"><b>SEO score</b><span class="up">Good · 86</span></div><div class="meter"><i style="width:86%;background:var(--bull)"></i></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CATEGORIES -->
+<section class="view" id="v-categories">
+  <div class="ph"><div><h1>Categories &amp; Tags</h1><p>Organise content and control the blog filters shown on the website</p></div></div>
+  <div class="grid" style="grid-template-columns:360px 1fr">
+    <div class="card cp"><h3 style="font-size:15px;margin-bottom:14px">Add category</h3>
+      <div class="field"><label>Name</label><input class="input" placeholder="e.g. Commodities"></div>
+      <div class="field"><label>Slug</label><input class="input" placeholder="commodities"></div>
+      <div class="field"><label>Parent</label><select class="input"><option>None</option><option>Market Analysis</option></select></div>
+      <div class="field"><label>Description</label><textarea class="input" rows="3"></textarea></div>
+      <div class="field"><label>Accent colour</label><div class="row"><span class="dot" style="width:22px;height:22px;background:#D4AF37;outline:2px solid #fff"></span><span class="dot" style="width:22px;height:22px;background:#F7931A"></span><span class="dot" style="width:22px;height:22px;background:#3B82F6"></span><span class="dot" style="width:22px;height:22px;background:#A855F7"></span><span class="dot" style="width:22px;height:22px;background:#16A34A"></span></div></div>
+      <div class="row" style="justify-content:space-between;margin-bottom:14px"><span>Show in blog filters</span><label class="sw"><input type="checkbox" checked><i></i></label></div>
+      <button class="btn gold" onclick="toast('Category added')">Add category</button></div>
+    <div class="card"><div class="ch"><h3>Categories</h3><span class="muted">Drag to reorder filter chips</span></div><div class="tw"><table><thead><tr><th></th><th>Name</th><th>Slug</th><th>Posts</th><th>In filters</th><th></th></tr></thead><tbody id="catTable"></tbody></table></div></div>
+  </div>
+</section>
+
+<!-- NEWS -->
+<section class="view" id="v-news">
+  <div class="ph"><div><h1>News Desk</h1><p>Breaking news, headlines and source attribution for the Market News page</p></div><div class="acts"><button class="btn gold" onclick="toast('Story created')">+ New story</button></div></div>
+  <div class="card cp" style="margin-bottom:20px;border-color:rgba(220,38,38,.45)">
+    <div class="row" style="justify-content:space-between;flex-wrap:wrap"><div class="row"><span class="badge red">Breaking banner · Live</span><b>Fed holds rates steady; statement signals data-dependent path into December</b></div><div class="row"><span class="muted">Auto-expire in 5h 12m</span><button class="btn sm">Edit</button><label class="sw"><input type="checkbox" checked><i></i></label></div></div></div>
+  <div class="card"><div class="tb"><div class="tabs" style="margin:0;border:0"><button class="on">All</button><button>Forex</button><button>Gold</button><button>Bitcoin</button><button>Commodities</button><button>Stocks</button><button>Global Economy</button></div></div>
+    <div class="tw"><table><thead><tr><th>Time</th><th>Headline</th><th>Category</th><th>Type</th><th>Source</th><th>Status</th><th></th></tr></thead><tbody id="newsT"></tbody></table></div></div>
+</section>
+
+<!-- MEDIA -->
+<section class="view" id="v-media">
+  <div class="ph"><div><h1>Media Library</h1><p>2,184 files · 6.2 GB of 50 GB used</p></div><div class="acts"><button class="btn">New folder</button><button class="btn gold">Upload files</button></div></div>
+  <div class="card cp" style="border-style:dashed;text-align:center;margin-bottom:20px;padding:28px"><b>Drop images, PDFs or videos here</b><p class="muted">JPG, PNG, WebP, SVG, PDF, MP4 · Max 50 MB · Images auto-optimised to WebP</p></div>
+  <div class="tabs"><button class="on">All files</button><button>Images</button><button>Charts</button><button>Documents</button><button>Video</button></div>
+  <div class="media" id="mediaG"></div>
+</section>
+
+<!-- PAGES -->
+<section class="view" id="v-pages">
+  <div class="ph"><div><h1>Pages &amp; Sections</h1><p>Every page on the website is built from editable sections. Reorder, show/hide and edit content without code.</p></div><div class="acts"><button class="btn">+ New page</button><a href="http://localhost:3000" target="_blank" class="btn">View site ↗</a><button class="btn gold" onclick="toast('Homepage published')">Publish changes</button></div></div>
+  <div class="grid" style="grid-template-columns:260px 1fr 360px;align-items:start">
+    <div class="card"><div class="ch"><h3>Pages</h3></div><div id="pageList"></div></div>
+    <div class="card cp"><div class="row" style="justify-content:space-between;margin-bottom:16px"><div><h3 style="font-size:16px">Home page</h3><span class="muted" style="font-size:12.5px">/ · Published · 9 sections</span></div><button class="btn sm">+ Add section</button></div><div id="secList"></div></div>
+    <div class="card cp" style="position:sticky;top:84px"><span class="badge gold plain">Editing section</span><h3 style="font-size:16px;margin:10px 0 14px">Hero</h3>
+      <div class="field"><label>Eyebrow</label><input class="input" value="Gold · Forex · Bitcoin · Global Macro"></div>
+      <div class="field"><label>Headline</label><input class="input" value="Trade Smarter."></div>
+      <div class="field"><label>Highlighted headline (gold)</label><input class="input" value="Understand the Markets."></div>
+      <div class="field"><label>Supporting text</label><textarea class="input" rows="3">Institutional-grade research on gold, Bitcoin and major currency pairs — daily technical analysis, macro context and the news that moves prices.</textarea></div>
+      <div class="grid g2" style="gap:10px"><div class="field"><label>Primary button</label><input class="input" value="Explore Gold Analysis"></div><div class="field"><label>Link</label><input class="input" value="/gold"></div></div>
+      <div class="field"><label>Hero chart symbol</label><select class="input"><option>XAU/USD</option><option>BTC/USD</option><option>EUR/USD</option></select></div>
+      <div class="field"><label>Stats</label><div class="grid g3" style="gap:6px"><input class="input num" value="12+"><input class="input num" value="2,400+"><input class="input num" value="85k"></div></div>
+      <button class="btn gold" style="width:100%;justify-content:center" onclick="toast('Section saved')">Save section</button></div>
+  </div>
+</section>
+
+<!-- MENUS -->
+<section class="view" id="v-menus">
+  <div class="ph"><div><h1>Menus &amp; Footer</h1><p>Control the main navigation, footer links, social profiles and risk disclaimer</p></div><div class="acts"><button class="btn gold" onclick="toast('Menus saved')">Save</button></div></div>
+  <div class="grid g2">
+    <div class="card"><div class="ch"><h3>Main navigation</h3><button class="btn sm">+ Add link</button></div><div id="navList"></div></div>
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="card cp"><h3 style="font-size:15px;margin-bottom:14px">Header CTA</h3><div class="grid g2" style="gap:10px"><div class="field"><label>Label</label><input class="input" value="Get Market Updates"></div><div class="field"><label>Link</label><input class="input" value="#subscribe"></div></div></div>
+      <div class="card cp"><h3 style="font-size:15px;margin-bottom:14px">Social profiles</h3><div class="field"><label>X / Twitter</label><input class="input" value="https://x.com/aurummarkets"></div><div class="field"><label>LinkedIn</label><input class="input" value="https://linkedin.com/company/aurummarkets"></div><div class="field"><label>YouTube</label><input class="input" placeholder="https://"></div><div class="field" style="margin:0"><label>Telegram</label><input class="input" placeholder="https://"></div></div>
+      <div class="card cp"><h3 style="font-size:15px;margin-bottom:14px">Footer risk disclaimer</h3><textarea class="input" rows="5">Trading foreign exchange, gold, cryptocurrencies and other leveraged products carries a high level of risk and may not be suitable for all investors. Content is for educational purposes only and does not constitute investment advice.</textarea></div>
+    </div>
+  </div>
+</section>
+
+<!-- MARKETS -->
+<section class="view" id="v-markets">
+  <div class="ph"><div><h1>Gold &amp; Market Rates</h1><p>Data sources, symbols and how prices are labelled on the website</p></div><div class="acts"><button class="btn">Test connection</button><button class="btn gold" onclick="toast('Market settings saved')">Save settings</button></div></div>
+  <div class="grid g3" style="margin-bottom:20px">
+    <div class="card cp"><span class="muted" style="font-size:12px">Primary data provider</span><h3 style="margin:6px 0">Not connected</h3><select class="input" style="margin-top:6px"><option>Select licensed provider…</option><option>Provider A (REST + WebSocket)</option><option>Provider B (REST)</option></select><div class="field" style="margin:10px 0 0"><label>API key</label><input class="input" type="password" placeholder="Stored encrypted on server"></div></div>
+    <div class="card cp"><span class="muted" style="font-size:12px">Display mode</span><h3 style="margin:6px 0">Sample data</h3><div class="row" style="flex-direction:column;align-items:stretch;gap:8px;margin-top:8px"><label class="row"><input type="radio" name="dm" class="chk"> <span class="dot" style="background:var(--bull)"></span>Live (real-time)</label><label class="row"><input type="radio" name="dm" class="chk"> <span class="dot" style="background:var(--warn)"></span>Delayed (15 min)</label><label class="row"><input type="radio" name="dm" class="chk" checked> <span class="dot" style="background:var(--info)"></span>Illustrative sample</label></div><p class="note" style="margin-top:10px">The label is shown next to every price on the website.</p></div>
+    <div class="card cp"><span class="muted" style="font-size:12px">Refresh interval</span><h3 style="margin:6px 0" class="num">5 seconds</h3><input type="range" min="1" max="60" value="5" style="width:100%;accent-color:#D4AF37;margin-top:10px"><div class="row" style="justify-content:space-between;margin-top:14px"><span>Stale-data warning after 2 min</span><label class="sw"><input type="checkbox" checked><i></i></label></div></div>
+  </div>
+  <div class="grid" style="grid-template-columns:1.5fr 1fr">
+    <div class="card"><div class="ch"><h3>Tracked symbols</h3><button class="btn sm">+ Add symbol</button></div><div class="tw"><table><thead><tr><th>Symbol</th><th>Display name</th><th>Last</th><th>Status</th><th>Ticker</th><th>Home card</th></tr></thead><tbody id="symT"></tbody></table></div></div>
+    <div class="card cp"><h3 style="font-size:15px;margin-bottom:4px">Local gold rates</h3><p class="muted" style="font-size:13px;margin-bottom:14px">Used by the gold calculator (gram / tola)</p>
+      <div class="tw"><table><thead><tr><th>Currency</th><th>FX rate</th><th>Premium</th></tr></thead><tbody>
+        <tr><td><b>PKR</b></td><td><input class="input num" value="278.50" style="height:32px"></td><td><input class="input num" value="1.5%" style="height:32px"></td></tr>
+        <tr><td><b>INR</b></td><td><input class="input num" value="83.90" style="height:32px"></td><td><input class="input num" value="6.0%" style="height:32px"></td></tr>
+        <tr><td><b>AED</b></td><td><input class="input num" value="3.6725" style="height:32px"></td><td><input class="input num" value="0.8%" style="height:32px"></td></tr>
+        <tr><td><b>EUR</b></td><td><input class="input num" value="0.9200" style="height:32px"></td><td><input class="input num" value="0.0%" style="height:32px"></td></tr></tbody></table></div>
+      <div class="field" style="margin-top:14px"><label>Gold page key levels (manual)</label><div class="grid g4" style="gap:6px"><input class="input num" value="R2 2850"><input class="input num" value="R1 2790"><input class="input num" value="S1 2705"><input class="input num" value="S2 2640"></div></div>
+      <div class="field" style="margin:0"><label>Trend summary</label><select class="input"><option>Moderately bullish</option><option>Bullish</option><option>Neutral</option><option>Moderately bearish</option><option>Bearish</option></select></div></div>
+  </div>
+</section>
+
+<!-- CALENDAR -->
+<section class="view" id="v-calendar">
+  <div class="ph"><div><h1>Economic Calendar</h1><p>Events shown on the Home, News and Gold pages</p></div><div class="acts"><button class="btn">Import from feed</button><button class="btn gold">+ Add event</button></div></div>
+  <div class="card"><div class="tw"><table><thead><tr><th>Date / time (GMT)</th><th>Country</th><th>Event</th><th>Impact</th><th>Forecast</th><th>Prior</th><th>Actual</th><th>Show on Gold page</th></tr></thead><tbody id="calT"></tbody></table></div></div>
+</section>
+
+<!-- SUBSCRIBERS -->
+<section class="view" id="v-subscribers">
+  <div class="ph"><div><h1>Newsletter</h1><p>Subscribers, lists and campaigns</p></div><div class="acts"><button class="btn">Export</button><button class="btn gold">+ New campaign</button></div></div>
+  <div class="grid g4" style="margin-bottom:20px"><div class="card kpi"><span>Total subscribers</span><b class="num">85,214</b></div><div class="card kpi"><span>Open rate</span><b class="num">46.2%</b></div><div class="card kpi"><span>Click rate</span><b class="num">8.7%</b></div><div class="card kpi"><span>Unsubscribes (30d)</span><b class="num">312</b></div></div>
+  <div class="card"><div class="ch"><h3>Recent campaigns</h3></div><div class="tw"><table><thead><tr><th>Campaign</th><th>List</th><th>Status</th><th>Sent</th><th>Opens</th><th>Clicks</th></tr></thead><tbody>
+    <tr><td><b>Daily Gold Brief — Oct 30</b></td><td>Daily Gold Brief</td><td><span class="badge pub">Sent</span></td><td class="num">84,902</td><td class="num">47.1%</td><td class="num">9.3%</td></tr>
+    <tr><td><b>Fed Decision Special</b></td><td>All subscribers</td><td><span class="badge pub">Sent</span></td><td class="num">85,120</td><td class="num">52.4%</td><td class="num">12.0%</td></tr>
+    <tr><td><b>Daily Gold Brief — Oct 31</b></td><td>Daily Gold Brief</td><td><span class="badge sch">Scheduled</span></td><td class="num muted">—</td><td class="num muted">—</td><td class="num muted">—</td></tr>
+    <tr><td><b>Weekly Crypto Wrap</b></td><td>Crypto</td><td><span class="badge draft">Draft</span></td><td class="num muted">—</td><td class="num muted">—</td><td class="num muted">—</td></tr></tbody></table></div></div>
+</section>
+
+<!-- INBOX -->
+<section class="view" id="v-inbox">
+  <div class="ph"><div><h1>Contact Inbox</h1><p>Messages from the website contact form</p></div><div class="acts"><select class="input" style="width:auto"><option>All categories</option><option>General question</option><option>Editorial submission</option><option>Partnership</option><option>Advertising</option><option>Technical support</option></select></div></div>
+  <div class="card inbox"><div style="border-right:1px solid var(--border)" id="msgs"></div>
+    <div class="cp" style="padding:28px"><div class="row" style="justify-content:space-between;flex-wrap:wrap"><div><span class="badge gold plain">Partnership</span><h2 style="font-size:20px;margin:10px 0 4px">Data partnership for gold price widget</h2><span class="muted">Omar Haddad · omar@example.com · Today, 11:42</span></div><div class="row"><button class="btn sm">Mark resolved</button><button class="btn sm">Assign</button></div></div>
+      <p style="margin:22px 0;line-height:1.75;color:#CBD5E1">Hello Aurum team,<br><br>We run a regional bullion dealer and would like to discuss licensing your daily gold commentary for our client portal, and possibly co-branding a gold price widget. Could we schedule a call next week?<br><br>Best regards,<br>Omar</p>
+      <textarea class="input" rows="4" placeholder="Write a reply…"></textarea><div class="row" style="margin-top:10px;justify-content:flex-end"><button class="btn">Save note</button><button class="btn gold" onclick="toast('Reply sent')">Send reply</button></div></div></div>
+</section>
+
+<!-- USERS -->
+<section class="view" id="v-users">
+  <div class="ph"><div><h1>Users &amp; Roles</h1><p>Team members, permissions and public author profiles</p></div><div class="acts"><button class="btn gold">+ Invite user</button></div></div>
+  <div class="card"><div class="tw"><table><thead><tr><th>Name</th><th>Role</th><th>Public profile</th><th>Posts</th><th>Last active</th><th>2FA</th><th></th></tr></thead><tbody id="userT"></tbody></table></div></div>
+  <div class="card cp" style="margin-top:20px"><h3 style="font-size:15px;margin-bottom:12px">Role permissions</h3><div class="tw"><table><thead><tr><th>Permission</th><th>Admin</th><th>Editor</th><th>Analyst</th><th>Contributor</th></tr></thead><tbody>
+    <tr><td>Publish posts</td><td>✓</td><td>✓</td><td>✓</td><td class="muted">Review only</td></tr><tr><td>Edit others' posts</td><td>✓</td><td>✓</td><td class="muted">—</td><td class="muted">—</td></tr><tr><td>Breaking news banner</td><td>✓</td><td>✓</td><td class="muted">—</td><td class="muted">—</td></tr><tr><td>Edit pages &amp; menus</td><td>✓</td><td class="muted">—</td><td class="muted">—</td><td class="muted">—</td></tr><tr><td>Market data settings</td><td>✓</td><td class="muted">—</td><td class="muted">—</td><td class="muted">—</td></tr></tbody></table></div></div>
+</section>
+
+<!-- SETTINGS -->
+<section class="view" id="v-settings">
+  <div class="ph"><div><h1>Site Settings</h1><p>Brand, SEO defaults and integrations</p></div><div class="acts"><button class="btn gold" onclick="toast('Settings saved')">Save changes</button></div></div>
+  <div class="tabs"><button class="on">General</button><button>Branding</button><button>SEO</button><button>Integrations</button><button>Legal</button></div>
+  <div class="grid g2">
+    <div class="card cp"><div class="field"><label>Site name</label><input class="input" value="Aurum Markets"></div><div class="field"><label>Tagline</label><input class="input" value="Trade Smarter. Understand the Markets."></div><div class="field"><label>Contact email</label><input class="input" value="hello@aurummarkets.example"></div><div class="field"><label>Time zone</label><select class="input"><option>GMT (UTC+0)</option><option>Asia/Karachi (UTC+5)</option><option>America/New_York</option></select></div><div class="field" style="margin:0"><label>Default homepage</label><select class="input"><option>Home</option><option>Gold Rates</option></select></div></div>
+    <div class="card cp"><div class="field"><label>Logo</label><div class="row"><span class="logo" style="padding:0"><i>Au</i>Aurum</span><button class="btn sm">Upload</button></div></div><div class="field"><label>Brand colour</label><div class="row"><span class="dot" style="width:28px;height:28px;border-radius:6px;background:#D4AF37"></span><input class="input num" value="#D4AF37" style="width:140px"></div></div>
+      <div class="row" style="justify-content:space-between;margin-bottom:12px"><span>Light theme for articles</span><label class="sw"><input type="checkbox" checked><i></i></label></div>
+      <div class="row" style="justify-content:space-between;margin-bottom:12px"><span>Maintenance mode</span><label class="sw"><input type="checkbox"><i></i></label></div>
+      <div class="row" style="justify-content:space-between"><span>Allow search-engine indexing</span><label class="sw"><input type="checkbox" checked><i></i></label></div></div>
+  </div>
+</section>
+</main>
+</div>
+</div>
+<div class="toast" id="toast"><span class="up">✓</span><span id="tmsg">Saved</span></div>
+
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+function toast(m){$('#tmsg').textContent=m;$('#toast').classList.add('show');clearTimeout(window._t);window._t=setTimeout(()=>$('#toast').classList.remove('show'),2200)}
+function rng(s){return()=>{s=(s*16807)%2147483647;return(s-1)/2147483646}}
+function ser(n,v,vol,d,s){const r=rng(s),a=[];for(let i=0;i<n;i++){v+=(r()-.5)*vol+d;a.push(v)}return a}
+function chart(el,list){const w=800,h=240;const all=list.flatMap(x=>x.d),mn=Math.min(...all)*.95,mx=Math.max(...all);let g='';for(let i=1;i<5;i++)g+=`<line x1="0" x2="${w}" y1="${h*i/5}" y2="${h*i/5}" stroke="#243044" stroke-dasharray="3 4" vector-effect="non-scaling-stroke"/>`;
+ list.forEach((s,k)=>{const p=s.d.map((v,i)=>`${i?'L':'M'}${i/(s.d.length-1)*w},${h-(v-mn)/(mx-mn)*(h-20)}`).join('');if(!k)g+=`<defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${s.c}" stop-opacity=".3"/><stop offset="1" stop-color="${s.c}" stop-opacity="0"/></linearGradient></defs><path d="${p}L${w},${h}L0,${h}Z" fill="url(#ga)"/>`;g+=`<path d="${p}" fill="none" stroke="${s.c}" stroke-width="2" vector-effect="non-scaling-stroke"/>`});el.innerHTML=g}
+chart($('#trafChart'),[{d:ser(30,40,8,.6,4),c:'#D4AF37'},{d:ser(30,18,4,.2,9),c:'#3B82F6'}]);
+
+const cats=[['Gold Analysis',64,'#D4AF37'],['Forex Trading',48,'#3B82F6'],['Bitcoin & Crypto',41,'#F7931A'],['Technical Analysis',33,'#38BDF8'],['Fundamental Analysis',24,'#94A3B8'],['Trading Education',22,'#A855F7'],['Market Psychology',16,'#16A34A']];
+$('#topCats').innerHTML=cats.slice(0,5).map(c=>`<div style="margin-bottom:14px"><div class="row" style="justify-content:space-between;font-size:13px;margin-bottom:6px"><span>${c[0]}</span><span class="num muted">${(c[1]*1.9).toFixed(0)}K views</span></div><div class="meter"><i style="width:${c[1]*1.4}%;background:${c[2]}"></i></div></div>`).join('');
+$('#sources').innerHTML=[['Organic search',48,'#D4AF37'],['Newsletter',22,'#3B82F6'],['Direct',16,'#94A3B8'],['Social',10,'#A855F7'],['Referral',4,'#16A34A']].map(c=>`<div style="margin-bottom:14px"><div class="row" style="justify-content:space-between;font-size:13px;margin-bottom:6px"><span>${c[0]}</span><span class="num">${c[1]}%</span></div><div class="meter"><i style="width:${c[1]*2}%;background:${c[2]}"></i></div></div>`).join('');
+
+const authors=['Sarah Mitchell','James Lowe','Daniel Kim','Aisha Rahman','Priya Nair'];
+const th={'Gold Analysis':'','Forex Trading':'t-fx','Bitcoin & Crypto':'t-btc','Technical Analysis':'t-fx','Fundamental Analysis':'t-fed','Trading Education':'t-edu','Market Psychology':'t-edu'};
+const posts=[
+ ['Gold holds above $2,700 as real yields ease','Gold Analysis',0,'Draft','Analysis','—','Oct 30, 2026'],
+ ['Why central banks keep buying gold','Gold Analysis',0,'Published','Analysis','48.2K','Oct 30, 2026'],
+ ['EUR/USD: policy divergence returns','Forex Trading',1,'Published','Analysis','21.7K','Oct 29, 2026'],
+ ['Spot Bitcoin ETF flows: signal vs. noise','Bitcoin & Crypto',2,'Published','Analysis','33.9K','Oct 28, 2026'],
+ ['Daily Gold Brief — Oct 31','Gold Analysis',0,'Scheduled','Analysis','—','Oct 31, 2026'],
+ ['Support and resistance that actually works','Technical Analysis',3,'In review','Education','—','Oct 27, 2026'],
+ ['Real yields and gold: is the link breaking?','Fundamental Analysis',0,'Published','Analysis','19.4K','Oct 26, 2026'],
+ ['Position sizing 101: the 1% rule','Trading Education',4,'Published','Education','27.1K','Oct 25, 2026'],
+ ['FOMO, revenge trades and the discipline gap','Market Psychology',4,'Draft','Education','—','Oct 24, 2026'],
+ ['NFP Preview: what to expect','Forex Trading',1,'Scheduled','Analysis','—','Nov 01, 2026']];
+const sb={Published:'pub',Draft:'draft',Scheduled:'sch','In review':'rev'};
+const prow=p=>`<tr><td><input type="checkbox" class="chk pc" onchange="sel()"></td><td><a href="#editor" class="ttl"><span class="thumb ${th[p[1]]}"></span><span><b>${p[0]}</b><span>/blog/${p[0].toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,34)}</span></span></a></td><td>${p[1]}</td><td><div class="row"><span class="av s">${authors[p[2]].split(' ').map(x=>x[0]).join('')}</span>${authors[p[2]]}</div></td><td><span class="badge ${sb[p[3]]}">${p[3]}</span></td><td><span class="badge plain ${p[4]==='Analysis'?'gold':''}">${p[4]}</span></td><td class="num">${p[5]}</td><td class="num muted">${p[6]}</td><td><div class="row" style="gap:4px"><a href="#editor" class="btn sm">Edit</a><button class="btn sm">⋯</button></div></td></tr>`;
+let pst='';
+function renderPosts(){const q=$('#pq').value.toLowerCase(),c=$('#pcat').value;const l=posts.filter(p=>(!pst||p[3]===pst)&&(!c||p[1]===c)&&p[0].toLowerCase().includes(q));$('#ptable').innerHTML=l.length?l.map(prow).join(''):`<tr><td colspan="9" style="text-align:center;padding:48px" class="muted"><b style="color:var(--text)">No posts found</b><br>Try changing the filters.</td></tr>`}
+$('#pcat').innerHTML+=cats.map(c=>`<option>${c[0]}</option>`).join('');
+$$('#ptabs button').forEach(b=>b.onclick=()=>{$$('#ptabs button').forEach(x=>x.classList.toggle('on',x===b));pst=b.dataset.s;renderPosts()});
+renderPosts();
+function sel(){$('#selc').textContent=$$('.pc:checked').length+' selected'}
+$('#recent').innerHTML=posts.slice(0,5).map(p=>`<tr><td><a href="#editor" class="ttl"><span class="thumb ${th[p[1]]}"></span><span><b>${p[0]}</b><span>${p[1]} · ${authors[p[2]]}</span></span></a></td><td><span class="badge ${sb[p[3]]}">${p[3]}</span></td><td class="num">${p[5]}</td><td class="num muted">${p[6]}</td></tr>`).join('');
+$('#topPosts').innerHTML=posts.filter(p=>p[3]==='Published').map(p=>`<tr><td><b>${p[0]}</b></td><td class="num">${p[5]}</td><td class="num muted">${(4+Math.random()*3).toFixed(0)}m ${(Math.random()*59).toFixed(0)}s</td></tr>`).join('');
+$('#catTable').innerHTML=cats.map(c=>`<tr><td class="drag">⋮⋮</td><td><div class="row"><span class="dot" style="background:${c[2]}"></span><b>${c[0]}</b></div></td><td class="muted">/${c[0].toLowerCase().replace(/[^a-z]+/g,'-')}</td><td class="num">${c[1]}</td><td><label class="sw"><input type="checkbox" checked><i></i></label></td><td><button class="btn sm">Edit</button></td></tr>`).join('');
+
+const news=[['14:05','Fed holds rates; Powell says December decision "data dependent"','Global Economy','Verified report','Federal Reserve','Published'],['13:30','Gold climbs to session high as yields slip','Gold','Verified report','Aurum News Desk','Published'],['12:15','Euro slides after eurozone inflation undershoots','Forex','Verified report','Eurostat','Published'],['11:40','Bitcoin ETFs record second day of net outflows','Bitcoin','Verified report','Fund filings','In review'],['08:15','Analysis: why gold dips keep getting bought','Gold','Analysis','Aurum Research','Published'],['—','China PMI reaction: what it means for oil','Commodities','Analysis','Aurum Research','Draft']];
+$('#newsT').innerHTML=news.map(n=>`<tr><td class="num muted">${n[0]}</td><td><b>${n[1]}</b></td><td>${n[2]}</td><td><span class="badge plain ${n[3]==='Analysis'?'gold':'pub'}">${n[3]==='Analysis'?'Analysis':'✓ Verified'}</span></td><td class="muted">${n[4]}</td><td><span class="badge ${sb[n[5]]}">${n[5]}</span></td><td><button class="btn sm">Edit</button></td></tr>`).join('');
+
+const mc=['linear-gradient(135deg,#3A2E0B,#121826)','linear-gradient(135deg,#4a2a08,#121826)','linear-gradient(135deg,#0E2142,#121826)','linear-gradient(135deg,#334155,#0B1220)','linear-gradient(135deg,#2a1640,#121826)','linear-gradient(135deg,#10261A,#121826)'];
+$('#mediaG').innerHTML=['gold-vault-hero.jpg','btc-desk.jpg','fx-screens.jpg','fed-building.jpg','edu-chart.png','oil-rig.jpg','xau-daily-chart.png','author-sarah.jpg','dxy-weekly.png','gold-bars-02.jpg','crypto-coins.jpg','team-office.jpg'].map((n,i)=>`<div style="background:${mc[i%6]}"><span>${n}</span></div>`).join('');
+
+$('#pageList').innerHTML=['Home','Gold Rates','Market News','Blog','Article template','About Us','Contact','Privacy Policy','Terms of Use'].map((p,i)=>`<div class="list-it" style="${i===0?'background:var(--gsoft);box-shadow:inset 3px 0 0 var(--gold)':''}"><span style="flex:1;font-weight:${i===0?700:500}">${p}</span><span class="badge ${i<7?'pub':'draft'}">${i<7?'Live':'Draft'}</span></div>`).join('');
+const secs=[['H','Hero','Headline, text, CTA buttons, chart',1],['$','Market overview cards','5 symbols · from Market Rates',1],['★','Featured gold analysis','Auto: latest “Featured” Gold post',1],['₿','Crypto highlights','3 latest Bitcoin & Crypto posts',1],['FX','Forex technical table','5 pairs · manual levels',1],['~','Market trend chart','Gold vs DXY · 3M default',1],['N','Latest news + calendar','4 stories · 5 high-impact events',1],['B','Featured articles','3 posts · Pick manually',1],['@','Newsletter','List: Daily Gold Brief',1],['T','Testimonials','Hidden',0]];
+$('#secList').innerHTML=secs.map((s,i)=>`<div class="sec-it ${i===0?'sel':''}"><span class="drag">⋮⋮</span><span class="ic">${s[0]}</span><div style="flex:1"><b>${s[1]}</b><div class="muted" style="font-size:12.5px">${s[2]}</div></div><button class="btn sm">Edit</button><label class="sw"><input type="checkbox" ${s[3]?'checked':''}><i></i></label></div>`).join('');
+$('#navList').innerHTML=['Home|/','Market Analysis|/blog','Gold Rates|/gold','Bitcoin & Crypto|/blog?cat=crypto','Forex|/blog?cat=forex','Market News|/news','Blog|/blog','About Us|/about','Contact|/contact'].map(x=>{const[a,b]=x.split('|');return`<div class="list-it"><span class="drag">⋮⋮</span><b style="flex:1">${a}</b><span class="muted num" style="font-size:12px">${b}</span><button class="btn sm">Edit</button><label class="sw"><input type="checkbox" checked><i></i></label></div>`}).join('');
+$('#symT').innerHTML=[['XAU/USD','Gold Spot','2,748.30'],['BTC/USD','Bitcoin','71,420'],['EUR/USD','Euro / US Dollar','1.0832'],['GBP/USD','Pound / US Dollar','1.3021'],['DXY','US Dollar Index','104.62'],['XAG/USD','Silver Spot','32.84'],['USD/JPY','US Dollar / Yen','152.31']].map((s,i)=>`<tr><td><b>${s[0]}</b></td><td class="muted">${s[1]}</td><td class="num">${s[2]}</td><td><span class="badge sch">Sample</span></td><td><label class="sw"><input type="checkbox" checked><i></i></label></td><td><label class="sw"><input type="checkbox" ${i<5?'checked':''}><i></i></label></td></tr>`).join('');
+$('#calT').innerHTML=[['Oct 31 · 12:30','US','Core PCE Price Index (MoM)','High','0.2%','0.3%',''],['Nov 01 · 12:30','US','Non-Farm Payrolls','High','140K','254K',''],['Nov 05 · 15:00','US','ISM Services PMI','Medium','53.8','54.9',''],['Nov 06 · 13:15','EU','ECB Interest Rate Decision','High','3.15%','3.40%',''],['Nov 07 · 12:00','UK','BoE Interest Rate Decision','High','4.75%','5.00%',''],['Nov 13 · 13:30','US','CPI (YoY)','High','2.5%','2.4%','']].map(r=>`<tr><td class="num">${r[0]}</td><td><span class="badge plain">${r[1]}</span></td><td><b>${r[2]}</b></td><td><span class="badge ${r[3]==='High'?'red':'rev'}">${r[3]}</span></td><td><input class="input num" value="${r[4]}" style="height:32px;width:90px"></td><td class="num muted">${r[5]}</td><td><input class="input num" placeholder="—" style="height:32px;width:90px"></td><td><label class="sw"><input type="checkbox" ${r[3]==='High'?'checked':''}><i></i></label></td></tr>`).join('');
+$('#msgs').innerHTML=[['Omar Haddad','Partnership','Data partnership for gold price widget','11:42',1],['Lena Fischer','Editorial submission','Guest article: gold miners vs. bullion','10:05',1],['Rahul Mehta','Technical support','Gold calculator shows wrong tola value','Yesterday',1],['Chen Wei','Advertising','Q1 sponsorship rates','Yesterday',0],['Maria Santos','General question','How often is the gold page updated?','Oct 28',0]].map((m,i)=>`<div class="msg ${i===0?'on':''} ${m[4]?'unread':''}"><div class="row" style="justify-content:space-between"><b style="color:${m[4]?'var(--text)':'var(--muted)'}">${m[0]}</b><span class="muted num" style="font-size:12px">${m[3]}</span></div><div style="font-weight:${m[4]?600:400};margin:2px 0">${m[2]}</div><span class="badge plain" style="font-size:10.5px">${m[1]}</span></div>`).join('');
+$('#userT').innerHTML=[['Sarah Mitchell','Administrator','Senior Gold Strategist',96,'Now',1],['James Lowe','Editor','Head of FX Research',58,'2h ago',1],['Daniel Kim','Analyst','Crypto Analyst',41,'Yesterday',1],['Aisha Rahman','Analyst','Technical Analyst',33,'Oct 28',0],['Priya Nair','Contributor','Trading Educator',20,'Oct 26',0]].map(u=>`<tr><td><div class="row"><span class="av s">${u[0].split(' ').map(x=>x[0]).join('')}</span><div><b>${u[0]}</b><div class="muted" style="font-size:12px">${u[0].split(' ')[0].toLowerCase()}@aurummarkets.example</div></div></div></td><td><span class="badge plain ${u[1]==='Administrator'?'gold':''}">${u[1]}</span></td><td class="muted">${u[2]}</td><td class="num">${u[3]}</td><td class="muted">${u[4]}</td><td>${u[5]?'<span class="badge pub">On</span>':'<span class="badge red">Off</span>'}</td><td><button class="btn sm">Manage</button></td></tr>`).join('');
+
+const names={dashboard:'Dashboard',analytics:'Analytics',posts:'All Posts',editor:'Edit Post',categories:'Categories & Tags',news:'News Desk',media:'Media Library',pages:'Pages & Sections',menus:'Menus & Footer',markets:'Gold & Market Rates',calendar:'Economic Calendar',subscribers:'Newsletter',inbox:'Contact Inbox',users:'Users & Roles',settings:'Site Settings'};
+function route(){let h=location.hash.slice(1)||'dashboard';if(!names[h])h='dashboard';$$('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+h));$$('.sb a.it').forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+h));$('#crumb').textContent=names[h];document.title='Aurum Admin — '+names[h];window.scrollTo(0,0)}
+addEventListener('hashchange',route);route();
+$$('.tabs button').forEach(b=>{if(!b.closest('#ptabs'))b.addEventListener('click',()=>{b.parentElement.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b))})});
+</script>
+<script src="cms-admin.js"></script>
+</body>
+</html>

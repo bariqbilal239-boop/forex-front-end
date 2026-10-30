@@ -1,0 +1,16 @@
+{
+  "name": "forex-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node.js API and admin panel for the Aurum Markets forex website",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "dev": "node --disable-warning=ExperimentalWarning --watch src/server.js"
+  },
+  "dependencies": {
+    "express": "5.1.0"
+  }
+}
